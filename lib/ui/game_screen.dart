@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../game/game_state.dart';
 import '../services/monetization.dart';
 import '../services/storage.dart';
+import 'effects.dart';
 import 'painters.dart';
 import 'palette.dart';
 
@@ -33,8 +34,18 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   bool _ghostValid = false;
   List<int> _clearRows = const [], _clearCols = const [];
 
-  String? _toast;
-  int _toastId = 0;
+  // Effects clock and heat.
+  Duration _elapsed = Duration.zero;
+  Duration _lastTick = Duration.zero;
+  double _heat = 0; // shown heat, eases toward game.heat
+  DateTime? _blazeStart;
+  static const _blazeLength = Duration(milliseconds: 3200);
+
+  // Praise text.
+  String? _praise;
+  String? _praiseSub;
+  DateTime? _praiseStart;
+  static const _praiseLength = Duration(milliseconds: 1300);
   late int _best;
   bool _newBest = false;
 
@@ -43,12 +54,16 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     super.initState();
     game = widget.resume ?? GameState();
     _best = Storage.best;
-    _ticker = createTicker((_) {
+    _heat = game.heat;
+    _ticker = createTicker((elapsed) {
+      final dt = (elapsed - _lastTick).inMicroseconds / 1e6;
+      _lastTick = elapsed;
+      _elapsed = elapsed;
       _now = DateTime.now();
       _blooms.removeWhere((b) => _now.difference(b.start) > Bloom.duration);
-      if (_blooms.isEmpty) _ticker.stop();
+      _heat += (game.heat - _heat) * min(1.0, dt * 2.5);
       setState(() {});
-    });
+    })..start();
     if (!Storage.tutorialSeen) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showTutorial());
     }
@@ -147,12 +162,19 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       if (!_ticker.isActive) _ticker.start();
     }
     if (r.boardCleared) {
-      _showToast('Bahçe temiz! +300');
-    } else if (r.linesCleared >= 2 || r.multiplier >= 2) {
-      final parts = <String>[];
+      _blazeStart = DateTime.now();
+      if (Storage.haptics) HapticFeedback.heavyImpact();
+    }
+    final praise = praiseFor(r);
+    if (praise != null) {
+      final parts = <String>['+${r.points}'];
       if (r.linesCleared >= 2) parts.add('${r.linesCleared} çizgi');
       if (r.multiplier >= 2) parts.add('seri x${r.multiplier}');
-      _showToast('${parts.join(' · ')}  +${r.points}');
+      setState(() {
+        _praise = praise;
+        _praiseSub = parts.join(' · ');
+        _praiseStart = DateTime.now();
+      });
     }
     if (game.score > _best) {
       _best = game.score;
@@ -170,12 +192,12 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     }
   }
 
-  void _showToast(String text) {
-    final id = ++_toastId;
-    setState(() => _toast = text);
-    Timer(const Duration(milliseconds: 1400), () {
-      if (mounted && id == _toastId) setState(() => _toast = null);
-    });
+  double get _blaze {
+    final start = _blazeStart;
+    if (start == null) return 0;
+    final t = _now.difference(start).inMilliseconds / _blazeLength.inMilliseconds;
+    if (t >= 1) return 0;
+    return t < 0.15 ? t / 0.15 : 1 - Curves.easeIn.transform((t - 0.15) / 0.85);
   }
 
   void _restart() {
@@ -184,6 +206,8 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       game = GameState();
       _newBest = false;
       _blooms.clear();
+      _praise = null;
+      _blazeStart = null;
     });
   }
 
@@ -200,7 +224,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
           backgroundColor: Palette.background,
-          title: Text(steps[i].$1, style: const TextStyle(color: Palette.soil, fontWeight: FontWeight.w700)),
+          title: Text(
+            steps[i].$1,
+            style: const TextStyle(color: Palette.soil, fontWeight: FontWeight.w700),
+          ),
           content: Text(steps[i].$2, style: const TextStyle(color: Palette.soil, fontSize: 16)),
           actions: [
             Text('${i + 1}/3  ', style: const TextStyle(color: Palette.soilLight)),
@@ -227,7 +254,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       context: context,
       builder: (ctx) => SimpleDialog(
         backgroundColor: Palette.background,
-        title: const Text('Duraklatıldı', style: TextStyle(color: Palette.soil, fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Duraklatıldı',
+          style: TextStyle(color: Palette.soil, fontWeight: FontWeight.w700),
+        ),
         children: [
           SimpleDialogOption(onPressed: () => Navigator.pop(ctx), child: const Text('Devam et')),
           SimpleDialogOption(
@@ -253,97 +283,235 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final dragging = _dragIndex != null ? game.tray[_dragIndex!] : null;
     final showGameOver = game.gameOver && _blooms.isEmpty;
+    final blaze = _blaze;
+    final shownHeat = max(_heat, blaze);
     return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(builder: (context, constraints) {
-          final boardSide = (constraints.maxWidth - 32).clamp(200.0, constraints.maxHeight * 0.58);
-          final cell = boardSide / boardSize;
-          return Stack(
-            key: _stackKey,
-            children: [
-              Column(
-                children: [
-                  _topBar(),
-                  const Spacer(),
-                  Center(
-                    child: SizedBox(
-                      key: _boardKey,
-                      width: boardSide,
-                      height: boardSide,
-                      child: CustomPaint(
-                        painter: BoardPainter(
-                          game: game,
-                          ghost: _ghostValid ? dragging?.shape : null,
-                          ghostRow: _ghostRow,
-                          ghostCol: _ghostCol,
-                          ghostColor: dragging?.color ?? 0,
-                          clearRows: _clearRows,
-                          clearCols: _clearCols,
-                          blooms: _blooms,
-                          now: _now,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  _tray(cell * 0.55),
-                  const SizedBox(height: 24),
-                ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [heatTop(shownHeat), heatBottom(shownHeat)],
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: HeatEffectsPainter(heat: _heat, seconds: _elapsed.inMicroseconds / 1e6, blaze: blaze),
+                ),
               ),
-              if (_toast != null)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 72,
-                  child: IgnorePointer(
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                        decoration: BoxDecoration(color: Palette.leaf, borderRadius: BorderRadius.circular(20)),
-                        child: Text(_toast!,
-                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+            ),
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final boardSide = (constraints.maxWidth - 32).clamp(200.0, constraints.maxHeight * 0.58);
+                  final cell = boardSide / boardSize;
+                  return Stack(
+                    key: _stackKey,
+                    children: [
+                      Column(
+                        children: [
+                          _topBar(shownHeat),
+                          _heatMeter(shownHeat),
+                          const Spacer(),
+                          Center(
+                            child: SizedBox(
+                              key: _boardKey,
+                              width: boardSide,
+                              height: boardSide,
+                              child: CustomPaint(
+                                painter: BoardPainter(
+                                  game: game,
+                                  ghost: _ghostValid ? dragging?.shape : null,
+                                  ghostRow: _ghostRow,
+                                  ghostCol: _ghostCol,
+                                  ghostColor: dragging?.color ?? 0,
+                                  clearRows: _clearRows,
+                                  clearCols: _clearCols,
+                                  blooms: _blooms,
+                                  now: _now,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          _tray(cell * 0.55),
+                          const SizedBox(height: 24),
+                        ],
                       ),
-                    ),
-                  ),
-                ),
-              if (dragging != null)
-                Positioned(
-                  left: _pieceTopLeft(dragging).dx,
-                  top: _pieceTopLeft(dragging).dy,
-                  child: IgnorePointer(
-                    child: CustomPaint(
-                      size: Size(dragging.shape.cols * cell, dragging.shape.rows * cell),
-                      painter: PiecePainter(dragging.shape, dragging.color, cell, opacity: 0.95),
-                    ),
-                  ),
-                ),
-              if (showGameOver) _gameOverOverlay(),
-            ],
-          );
-        }),
+                      if (_praise != null) _praiseOverlay(boardSide),
+                      if (dragging != null)
+                        Positioned(
+                          left: _pieceTopLeft(dragging).dx,
+                          top: _pieceTopLeft(dragging).dy,
+                          child: IgnorePointer(
+                            child: CustomPaint(
+                              size: Size(dragging.shape.cols * cell, dragging.shape.rows * cell),
+                              painter: PiecePainter(dragging.shape, dragging.color, cell, opacity: 0.95),
+                            ),
+                          ),
+                        ),
+                      if (showGameOver) _gameOverOverlay(),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _topBar() {
+  Widget _topBar(double heat) {
+    final ink = heatInk(heat);
+    final soft = ink.withValues(alpha: 0.7);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
       child: Row(
         children: [
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('REKOR', style: TextStyle(color: Palette.soilLight, fontSize: 12, letterSpacing: 1.2)),
-            Text('$_best', style: const TextStyle(color: Palette.soil, fontSize: 18, fontWeight: FontWeight.w700)),
-          ]),
+          SizedBox(
+            width: 72,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('REKOR', style: TextStyle(color: soft, fontSize: 12, letterSpacing: 1.2)),
+                Text(
+                  '$_best',
+                  style: TextStyle(color: ink, fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
           const Spacer(),
-          Text('${game.score}',
-              style: const TextStyle(color: Palette.soil, fontSize: 40, fontWeight: FontWeight.w800)),
+          Column(
+            children: [
+              Text('KLASİK', style: TextStyle(color: soft, fontSize: 12, letterSpacing: 2)),
+              Text(
+                '${game.score}',
+                style: TextStyle(color: ink, fontSize: 40, fontWeight: FontWeight.w800, height: 1.1),
+              ),
+            ],
+          ),
           const Spacer(),
-          IconButton(
-            onPressed: _pause,
-            icon: const Icon(Icons.pause_rounded, color: Palette.soil, size: 30),
-            tooltip: 'Duraklat',
+          SizedBox(
+            width: 72,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                onPressed: _pause,
+                icon: Icon(Icons.pause_rounded, color: ink, size: 30),
+                tooltip: 'Duraklat',
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Streak thermometer: snowflake when cold, flame when hot.
+  Widget _heatMeter(double heat) {
+    final ink = heatInk(heat);
+    final barColor = Color.lerp(const Color(0xFF6FB3E0), const Color(0xFFFF5A1F), heat)!;
+    final label = game.streak >= 2 ? 'Seri x${game.streak} · ${heatLabel(heat)}' : heatLabel(heat);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(48, 6, 48, 0),
+      child: Row(
+        children: [
+          Icon(heat < 0.35 ? Icons.ac_unit_rounded : Icons.local_fire_department_rounded, color: barColor, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Stack(
+                children: [
+                  Container(height: 10, color: ink.withValues(alpha: 0.15)),
+                  FractionallySizedBox(
+                    widthFactor: max(0.04, heat),
+                    child: Container(
+                      height: 10,
+                      decoration: BoxDecoration(gradient: LinearGradient(colors: [const Color(0xFF6FB3E0), barColor])),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _praiseOverlay(double boardSide) {
+    final start = _praiseStart!;
+    final t = _now.difference(start).inMilliseconds / _praiseLength.inMilliseconds;
+    if (t >= 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _praiseStart == start) setState(() => _praise = null);
+      });
+      return const SizedBox.shrink();
+    }
+    final scale = Curves.elasticOut.transform(min(1.0, t * 2.2)) * 0.9 + 0.1;
+    final opacity = t < 0.7 ? 1.0 : 1 - (t - 0.7) / 0.3;
+    final rise = -24 * t;
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Align(
+          alignment: const Alignment(0, -0.15),
+          child: Transform.translate(
+            offset: Offset(0, rise),
+            child: Opacity(
+              opacity: opacity.clamp(0.0, 1.0),
+              child: Transform.scale(
+                scale: scale,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: boardSide,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _praise!,
+                          style: TextStyle(
+                            fontSize: boardSide * 0.13,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            shadows: const [
+                              Shadow(color: Color(0xCC8E1F12), offset: Offset(0, 3), blurRadius: 0),
+                              Shadow(color: Color(0x66000000), offset: Offset(0, 6), blurRadius: 12),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_praiseSub != null)
+                      Text(
+                        _praiseSub!,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFFFE08A),
+                          shadows: [Shadow(color: Color(0x99000000), offset: Offset(0, 2), blurRadius: 4)],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -385,28 +553,36 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
           margin: const EdgeInsets.all(32),
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(color: Palette.background, borderRadius: BorderRadius.circular(24)),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(_newBest ? 'Yeni rekor!' : 'Yer kalmadı',
-                style: const TextStyle(color: Palette.soil, fontSize: 26, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 12),
-            Text('${game.score}', style: const TextStyle(color: Palette.leaf, fontSize: 48, fontWeight: FontWeight.w800)),
-            Text('Rekor: $_best', style: const TextStyle(color: Palette.soilLight, fontSize: 16)),
-            const SizedBox(height: 20),
-            if (Monetization.canOfferContinue) ...[
-              // Step 4: rewarded ad, continue once with 3 new pieces.
-              OutlinedButton(onPressed: () {}, child: const Text('Reklam izle, devam et')),
-              const SizedBox(height: 8),
-            ],
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: Palette.leaf, padding: const EdgeInsets.all(14)),
-                onPressed: _restart,
-                child: const Text('Tekrar oyna', style: TextStyle(fontSize: 18)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _newBest ? 'Yeni rekor!' : 'Yer kalmadı',
+                style: const TextStyle(color: Palette.soil, fontSize: 26, fontWeight: FontWeight.w800),
               ),
-            ),
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Ana menü')),
-          ]),
+              const SizedBox(height: 12),
+              Text(
+                '${game.score}',
+                style: const TextStyle(color: Palette.leaf, fontSize: 48, fontWeight: FontWeight.w800),
+              ),
+              Text('Rekor: $_best', style: const TextStyle(color: Palette.soilLight, fontSize: 16)),
+              const SizedBox(height: 20),
+              if (Monetization.canOfferContinue) ...[
+                // Step 4: rewarded ad, continue once with 3 new pieces.
+                OutlinedButton(onPressed: () {}, child: const Text('Reklam izle, devam et')),
+                const SizedBox(height: 8),
+              ],
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: Palette.leaf, padding: const EdgeInsets.all(14)),
+                  onPressed: _restart,
+                  child: const Text('Tekrar oyna', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Ana menü')),
+            ],
+          ),
         ),
       ),
     );

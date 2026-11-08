@@ -43,14 +43,22 @@ class GameState {
   final Random _rng;
 
   GameState({Random? rng})
-      : board = List.generate(boardSize, (_) => List.filled(boardSize, -1)),
-        tray = [null, null, null],
-        score = 0,
-        streak = 0,
-        movesSinceClear = 0,
-        gameOver = false,
-        _rng = rng ?? Random() {
+    : board = List.generate(boardSize, (_) => List.filled(boardSize, -1)),
+      tray = [null, null, null],
+      score = 0,
+      streak = 0,
+      movesSinceClear = 0,
+      gameOver = false,
+      _rng = rng ?? Random() {
     _refillTray();
+  }
+
+  /// How hot the streak is, from 0 (cold) to 1 (on fire). A streak of 6
+  /// clearing moves is full fire; each move without a clear cools it.
+  double get heat {
+    if (streak == 0) return 0;
+    final base = min(streak, 6) / 6;
+    return (base * (1 - movesSinceClear * 0.25)).clamp(0.0, 1.0);
   }
 
   bool canPlace(PieceShape shape, int row, int col) {
@@ -72,8 +80,7 @@ class GameState {
   }
 
   /// Rows and columns that would be completed if [shape] went at (row, col).
-  ({List<int> rows, List<int> cols}) previewClears(
-      PieceShape shape, int row, int col) {
+  ({List<int> rows, List<int> cols}) previewClears(PieceShape shape, int row, int col) {
     final filled = <int>{for (final c in shape.cells) (row + c.r) * boardSize + col + c.c};
     bool on(int r, int c) => board[r][c] != -1 || filled.contains(r * boardSize + c);
     final rows = <int>[], cols = <int>[];
@@ -198,12 +205,12 @@ class GameState {
   }
 
   Map<String, dynamic> toJson() => {
-        'board': board.map((r) => List<int>.from(r)).toList(),
-        'tray': tray.map((p) => p == null ? null : {'id': p.shape.id, 'color': p.color}).toList(),
-        'score': score,
-        'streak': streak,
-        'movesSinceClear': movesSinceClear,
-      };
+    'board': board.map((r) => List<int>.from(r)).toList(),
+    'tray': tray.map((p) => p == null ? null : {'id': p.shape.id, 'color': p.color}).toList(),
+    'score': score,
+    'streak': streak,
+    'movesSinceClear': movesSinceClear,
+  };
 
   static GameState? fromJson(Map<String, dynamic> j) {
     try {

@@ -11,12 +11,12 @@ class Palette {
   static const highlight = Color(0x33FFFFFF);
 
   static const blocks = <Color>[
-    Color(0xFF8DBF8B), // sage
-    Color(0xFFD98B5F), // terracotta
-    Color(0xFFF2B35B), // sunset
-    Color(0xFFB59FD9), // lavender
-    Color(0xFFE79AA8), // rose
-    Color(0xFF7FB7D9), // sky
+    Color(0xFF7CC47A), // sage
+    Color(0xFFE07B4F), // terracotta
+    Color(0xFFF4B740), // sunset
+    Color(0xFFA98BE0), // lavender
+    Color(0xFFEC7F9A), // rose
+    Color(0xFF5EAEE0), // sky
   ];
 
   static const petals = <Color>[

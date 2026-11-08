@@ -6,17 +6,95 @@ import '../game/game_state.dart';
 import '../game/pieces.dart';
 import 'palette.dart';
 
-/// Draws one block as a soft rounded tile.
+Color _shade(Color c, double amount) {
+  final hsl = HSLColor.fromColor(c);
+  return hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0)).toColor();
+}
+
+/// Draws one block as a raised, glossy garden tile: a darker base edge,
+/// a face that brightens toward the top, a soft shine and a small sparkle.
 void paintBlock(Canvas canvas, Rect rect, Color color, {double opacity = 1}) {
-  final r = RRect.fromRectAndRadius(rect.deflate(rect.width * 0.05), Radius.circular(rect.width * 0.2));
-  canvas.drawRRect(r, Paint()..color = color.withValues(alpha: opacity));
-  // Light top band for depth.
-  final top = RRect.fromRectAndCorners(
-    Rect.fromLTWH(r.left, r.top, r.width, r.height * 0.35),
-    topLeft: r.tlRadius,
-    topRight: r.trRadius,
+  final a = opacity;
+  final cell = rect.deflate(rect.width * 0.05);
+  final radius = Radius.circular(cell.width * 0.22);
+  final depth = cell.height * 0.09;
+
+  // Base edge, slightly lower, gives the tile thickness.
+  canvas.drawRRect(RRect.fromRectAndRadius(cell, radius), Paint()..color = _shade(color, -0.18).withValues(alpha: a));
+
+  // Face.
+  final face = Rect.fromLTRB(cell.left, cell.top, cell.right, cell.bottom - depth);
+  final faceR = RRect.fromRectAndRadius(face, radius);
+  canvas.drawRRect(
+    faceR,
+    Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          _shade(color, 0.10).withValues(alpha: a),
+          color.withValues(alpha: a),
+        ],
+      ).createShader(face),
   );
-  canvas.drawRRect(top, Paint()..color = Colors.white.withValues(alpha: 0.18 * opacity));
+  canvas.drawRRect(
+    faceR.deflate(0.5),
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = max(1, cell.width * 0.03)
+      ..color = _shade(color, 0.16).withValues(alpha: 0.6 * a),
+  );
+
+  // Shine across the upper part of the face.
+  final shine = Rect.fromLTWH(
+    face.left + face.width * 0.14,
+    face.top + face.height * 0.09,
+    face.width * 0.72,
+    face.height * 0.30,
+  );
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(shine, Radius.circular(shine.height / 2)),
+    Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Colors.white.withValues(alpha: 0.45 * a),
+          Colors.white.withValues(alpha: 0.0),
+        ],
+      ).createShader(shine),
+  );
+
+  // Small sparkle in the upper left.
+  final sp = Offset(face.left + face.width * 0.26, face.top + face.height * 0.26);
+  final s = face.width * 0.07;
+  final star = Path()
+    ..moveTo(sp.dx, sp.dy - s)
+    ..quadraticBezierTo(sp.dx, sp.dy, sp.dx + s, sp.dy)
+    ..quadraticBezierTo(sp.dx, sp.dy, sp.dx, sp.dy + s)
+    ..quadraticBezierTo(sp.dx, sp.dy, sp.dx - s, sp.dy)
+    ..quadraticBezierTo(sp.dx, sp.dy, sp.dx, sp.dy - s)
+    ..close();
+  canvas.drawPath(star, Paint()..color = Colors.white.withValues(alpha: 0.85 * a));
+}
+
+/// An empty soil hole on the board, with a soft inner shadow at the top.
+void paintEmptyCell(Canvas canvas, Rect rect, Color color) {
+  final cell = rect.deflate(rect.width * 0.06);
+  final r = RRect.fromRectAndRadius(cell, Radius.circular(cell.width * 0.2));
+  canvas.drawRRect(r, Paint()..color = color);
+  canvas.save();
+  canvas.clipRRect(r);
+  canvas.drawRect(
+    Rect.fromLTWH(cell.left, cell.top, cell.width, cell.height * 0.22),
+    Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Colors.black.withValues(alpha: 0.10), Colors.black.withValues(alpha: 0.0)],
+      ).createShader(Rect.fromLTWH(cell.left, cell.top, cell.width, cell.height * 0.22)),
+  );
+  canvas.restore();
 }
 
 /// A flower that opens and fades where a block was cleared.
@@ -75,10 +153,7 @@ class BoardPainter extends CustomPainter {
         } else if (ghostCells.contains(r * boardSize + c)) {
           paintBlock(canvas, rect, Palette.blocks[ghostColor], opacity: 0.55);
         } else {
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(rect.deflate(cell * 0.06), Radius.circular(cell * 0.18)),
-            Paint()..color = Palette.emptyCell,
-          );
+          paintEmptyCell(canvas, rect, Palette.emptyCell);
         }
         if (inClearLine && (v >= 0 || ghostCells.contains(r * boardSize + c))) {
           canvas.drawRRect(
@@ -127,8 +202,12 @@ class PiecePainter extends CustomPainter {
     final ox = (size.width - shape.cols * cell) / 2;
     final oy = (size.height - shape.rows * cell) / 2;
     for (final c in shape.cells) {
-      paintBlock(canvas, Rect.fromLTWH(ox + c.c * cell, oy + c.r * cell, cell, cell), Palette.blocks[color],
-          opacity: opacity);
+      paintBlock(
+        canvas,
+        Rect.fromLTWH(ox + c.c * cell, oy + c.r * cell, cell, cell),
+        Palette.blocks[color],
+        opacity: opacity,
+      );
     }
   }
 

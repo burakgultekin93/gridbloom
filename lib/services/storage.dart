@@ -24,8 +24,7 @@ class Storage {
   static int get gamesPlayed => _prefs.getInt('gamesPlayed') ?? 0;
   static set gamesPlayed(int v) => _prefs.setInt('gamesPlayed', v);
 
-  static void saveGame(GameState g) =>
-      _prefs.setString('savedGame', jsonEncode(g.toJson()));
+  static void saveGame(GameState g) => _prefs.setString('savedGame', jsonEncode(g.toJson()));
 
   static void clearSavedGame() => _prefs.remove('savedGame');
 

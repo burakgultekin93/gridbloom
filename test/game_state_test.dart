@@ -75,4 +75,16 @@ void main() {
     expect(copy.score, 120);
     expect(copy.tray[0]!.shape.id, g.tray[0]!.shape.id);
   });
+
+  test('heat rises with the streak and cools between clears', () {
+    final g = GameState(rng: Random(8));
+    expect(g.heat, 0);
+    g.streak = 3;
+    expect(g.heat, 0.5);
+    g.movesSinceClear = 2;
+    expect(g.heat, 0.25);
+    g.streak = 9;
+    g.movesSinceClear = 0;
+    expect(g.heat, 1);
+  });
 }
