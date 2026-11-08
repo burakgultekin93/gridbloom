@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'services/photo_store.dart';
 import 'services/storage.dart';
 import 'ui/home_screen.dart';
 import 'ui/palette.dart';
@@ -9,6 +10,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await Storage.init();
+  await PhotoStore.load();
   runApp(const GridbloomApp());
 }
 

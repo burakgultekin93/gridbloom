@@ -7,10 +7,12 @@ import 'package:flutter/services.dart';
 
 import '../game/game_state.dart';
 import '../services/monetization.dart';
+import '../services/photo_store.dart';
 import '../services/storage.dart';
 import 'effects.dart';
 import 'painters.dart';
 import 'palette.dart';
+import 'skins.dart';
 
 class GameScreen extends StatefulWidget {
   final GameState? resume;
@@ -26,6 +28,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   final _boardKey = GlobalKey();
   late final Ticker _ticker;
   final List<Bloom> _blooms = [];
+  final BoardFx _fx = BoardFx();
   DateTime _now = DateTime.now();
 
   int? _dragIndex;
@@ -61,6 +64,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       _elapsed = elapsed;
       _now = DateTime.now();
       _blooms.removeWhere((b) => _now.difference(b.start) > Bloom.duration);
+      _fx.prune(_now);
       _heat += (game.heat - _heat) * min(1.0, dt * 2.5);
       setState(() {});
     })..start();
@@ -120,6 +124,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     final cell = _cell;
     final row = (rel.dy / cell).round(), col = (rel.dx / cell).round();
     final valid = game.canPlace(p.shape, row, col);
+    // A soft tick each time the piece snaps onto a new spot.
+    if (valid && Storage.haptics && (!_ghostValid || row != _ghostRow || col != _ghostCol)) {
+      HapticFeedback.selectionClick();
+    }
     setState(() {
       _ghostRow = row;
       _ghostCol = col;
@@ -150,8 +158,15 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   }
 
   void _afterMove(MoveResult r) {
-    if (Storage.haptics) {
-      r.linesCleared > 0 ? HapticFeedback.mediumImpact() : HapticFeedback.selectionClick();
+    _haptics(r);
+    final now = DateTime.now();
+    _fx.flashes.add(PlaceFlash(r.placedCells, now));
+    _fx.glint = now;
+    for (final row in r.clearedRows) {
+      _fx.beams.add(LineBeam(true, row, now));
+    }
+    for (final col in r.clearedCols) {
+      _fx.beams.add(LineBeam(false, col, now));
     }
     if (r.clearedCells.isNotEmpty) {
       final start = DateTime.now();
@@ -163,13 +178,13 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     }
     if (r.boardCleared) {
       _blazeStart = DateTime.now();
-      if (Storage.haptics) HapticFeedback.heavyImpact();
     }
     final praise = praiseFor(r);
     if (praise != null) {
       final parts = <String>['+${r.points}'];
       if (r.linesCleared >= 2) parts.add('${r.linesCleared} çizgi');
       if (r.multiplier >= 2) parts.add('seri x${r.multiplier}');
+      if (r.skinChanged) parts.add('yeni görünüm: ${skins[game.skin].name}');
       setState(() {
         _praise = praise;
         _praiseSub = parts.join(' · ');
@@ -192,6 +207,24 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     }
   }
 
+  /// Light vibration for every point scored, stronger for bigger moves.
+  void _haptics(MoveResult r) {
+    if (!Storage.haptics) return;
+    if (r.boardCleared) {
+      HapticFeedback.heavyImpact();
+      for (var i = 1; i <= 3; i++) {
+        Future.delayed(Duration(milliseconds: 110 * i), HapticFeedback.heavyImpact);
+      }
+    } else if (r.linesCleared >= 2) {
+      HapticFeedback.heavyImpact();
+      Future.delayed(const Duration(milliseconds: 90), HapticFeedback.mediumImpact);
+    } else if (r.linesCleared == 1) {
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.lightImpact();
+    }
+  }
+
   double get _blaze {
     final start = _blazeStart;
     if (start == null) return 0;
@@ -206,6 +239,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       game = GameState();
       _newBest = false;
       _blooms.clear();
+      _fx.clear();
       _praise = null;
       _blazeStart = null;
     });
@@ -332,6 +366,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                   clearCols: _clearCols,
                                   blooms: _blooms,
                                   now: _now,
+                                  skin: skins[game.skin],
+                                  photo: PhotoStore.image.value,
+                                  fx: _fx,
                                 ),
                               ),
                             ),
@@ -349,7 +386,14 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                           child: IgnorePointer(
                             child: CustomPaint(
                               size: Size(dragging.shape.cols * cell, dragging.shape.rows * cell),
-                              painter: PiecePainter(dragging.shape, dragging.color, cell, opacity: 0.95),
+                              painter: PiecePainter(
+                                dragging.shape,
+                                dragging.color,
+                                cell,
+                                opacity: 0.95,
+                                skin: skins[game.skin],
+                                photo: PhotoStore.image.value,
+                              ),
                             ),
                           ),
                         ),
@@ -535,7 +579,16 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 height: cell * 5.4,
                 child: p == null || _dragIndex == i
                     ? null
-                    : CustomPaint(painter: PiecePainter(p.shape, p.color, cell, opacity: fits ? 1 : 0.35)),
+                    : CustomPaint(
+                        painter: PiecePainter(
+                          p.shape,
+                          p.color,
+                          cell,
+                          opacity: fits ? 1 : 0.35,
+                          skin: skins[game.skin],
+                          photo: PhotoStore.image.value,
+                        ),
+                      ),
               ),
             ),
           );

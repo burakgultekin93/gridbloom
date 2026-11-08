@@ -21,6 +21,10 @@ void main() {
     expect(r.linesCleared, 1);
     expect(r.points, 1 + 10 + 300); // the board is empty again
     expect(g.board[0].every((v) => v == -1), isTrue);
+    expect(r.skinChanged, isTrue);
+    expect(g.skin, 1);
+    expect(r.clearedRows, [0]);
+    expect(r.placedCells, [(0, 7)]);
   });
 
   test('row and column together count as 2 lines', () {
@@ -34,6 +38,8 @@ void main() {
     final r = g.place(0, 0, 0)!;
     expect(r.linesCleared, 2);
     expect(r.points, 1 + 30);
+    expect(r.skinChanged, isFalse);
+    expect(g.skin, 0);
   });
 
   test('streak multiplies and resets after 3 non-clearing moves', () {
@@ -70,9 +76,11 @@ void main() {
     final g = GameState(rng: Random(7));
     g.board[3][3] = 2;
     g.score = 120;
+    g.skin = 2;
     final copy = GameState.fromJson(g.toJson())!;
     expect(copy.board[3][3], 2);
     expect(copy.score, 120);
+    expect(copy.skin, 2);
     expect(copy.tray[0]!.shape.id, g.tray[0]!.shape.id);
   });
 

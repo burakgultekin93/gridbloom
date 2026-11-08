@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/photo_store.dart';
 import '../services/storage.dart';
 import 'game_screen.dart';
 import 'painters.dart';
@@ -19,6 +20,21 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(builder: (_) => GameScreen(resume: resume ? Storage.loadGame() : null)),
     );
     setState(() {});
+  }
+
+  Future<void> _pickPhoto() async {
+    try {
+      final ok = await PhotoStore.pick();
+      if (ok && mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fotoğraf bloklara eklendi')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Fotoğraf açılamadı. Başka bir fotoğraf dene.')));
+      }
+    }
   }
 
   void _settings() {
@@ -43,6 +59,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 activeThumbColor: Palette.leaf,
                 onChanged: (v) => set(() => Storage.haptics = v),
               ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded, color: Palette.leaf),
+                title: Text(
+                  PhotoStore.image.value == null ? 'Bloklara kendi fotoğrafını koy' : 'Blok fotoğrafını değiştir',
+                ),
+                subtitle: const Text('Galeriden bir fotoğraf seç, tüm bloklarda görünsün'),
+                onTap: () async {
+                  await _pickPhoto();
+                  set(() {});
+                },
+              ),
+              if (PhotoStore.image.value != null)
+                ListTile(
+                  leading: const Icon(Icons.hide_image_rounded, color: Palette.soilLight),
+                  title: const Text('Fotoğrafı kaldır, renkli bloklara dön'),
+                  onTap: () async {
+                    await PhotoStore.clear();
+                    set(() {});
+                    if (mounted) setState(() {});
+                  },
+                ),
               ListTile(
                 title: const Text('Öğreticiyi tekrar göster'),
                 onTap: () {
@@ -117,7 +154,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         },
                         child: const Text('Yeni oyun', style: TextStyle(color: Palette.soil)),
                       ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: _pickPhoto,
+                      icon: const Icon(Icons.photo_library_rounded, color: Palette.leaf),
+                      label: Text(
+                        PhotoStore.image.value == null ? 'Bloklara kendi fotoğrafını koy' : 'Blok fotoğrafını değiştir',
+                        style: const TextStyle(color: Palette.soil),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Text('Rekor: ${Storage.best}', style: const TextStyle(color: Palette.soilLight, fontSize: 16)),
                   ],
                 ),

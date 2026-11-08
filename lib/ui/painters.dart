@@ -1,10 +1,12 @@
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
 import '../game/game_state.dart';
 import '../game/pieces.dart';
 import 'palette.dart';
+import 'skins.dart';
 
 Color _shade(Color c, double amount) {
   final hsl = HSLColor.fromColor(c);
@@ -78,31 +80,51 @@ void paintBlock(Canvas canvas, Rect rect, Color color, {double opacity = 1}) {
   canvas.drawPath(star, Paint()..color = Colors.white.withValues(alpha: 0.85 * a));
 }
 
-/// An empty soil hole on the board, with a soft inner shadow at the top.
-void paintEmptyCell(Canvas canvas, Rect rect, Color color) {
-  final cell = rect.deflate(rect.width * 0.06);
-  final r = RRect.fromRectAndRadius(cell, Radius.circular(cell.width * 0.2));
-  canvas.drawRRect(r, Paint()..color = color);
-  canvas.save();
-  canvas.clipRRect(r);
-  canvas.drawRect(
-    Rect.fromLTWH(cell.left, cell.top, cell.width, cell.height * 0.22),
-    Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Colors.black.withValues(alpha: 0.10), Colors.black.withValues(alpha: 0.0)],
-      ).createShader(Rect.fromLTWH(cell.left, cell.top, cell.width, cell.height * 0.22)),
-  );
-  canvas.restore();
-}
-
 /// A flower that opens and fades where a block was cleared.
 class Bloom {
   final int r, c, color;
   final DateTime start;
   Bloom(this.r, this.c, this.color, this.start);
   static const duration = Duration(milliseconds: 700);
+}
+
+/// A short flash of light on cells a piece was just placed on.
+class PlaceFlash {
+  final List<(int, int)> cells;
+  final DateTime start;
+  PlaceFlash(this.cells, this.start);
+  static const duration = Duration(milliseconds: 480);
+}
+
+/// A beam of light running along a row or column that cleared.
+class LineBeam {
+  final bool isRow;
+  final int index;
+  final DateTime start;
+  LineBeam(this.isRow, this.index, this.start);
+  static const duration = Duration(milliseconds: 520);
+}
+
+/// Light effects shown on the board.
+class BoardFx {
+  final List<PlaceFlash> flashes = [];
+  final List<LineBeam> beams = [];
+  DateTime? glint; // a diagonal shine across all blocks
+  static const glintDuration = Duration(milliseconds: 750);
+
+  bool get busy => flashes.isNotEmpty || beams.isNotEmpty || glint != null;
+
+  void prune(DateTime now) {
+    flashes.removeWhere((f) => now.difference(f.start) > PlaceFlash.duration);
+    beams.removeWhere((b) => now.difference(b.start) > LineBeam.duration);
+    if (glint != null && now.difference(glint!) > glintDuration) glint = null;
+  }
+
+  void clear() {
+    flashes.clear();
+    beams.clear();
+    glint = null;
+  }
 }
 
 class BoardPainter extends CustomPainter {
@@ -112,6 +134,9 @@ class BoardPainter extends CustomPainter {
   final List<int> clearRows, clearCols;
   final List<Bloom> blooms;
   final DateTime now;
+  final Skin skin;
+  final ui.Image? photo;
+  final BoardFx fx;
 
   BoardPainter({
     required this.game,
@@ -123,17 +148,21 @@ class BoardPainter extends CustomPainter {
     required this.clearCols,
     required this.blooms,
     required this.now,
+    required this.skin,
+    required this.photo,
+    required this.fx,
   });
+
+  double _t(DateTime start, Duration d) => now.difference(start).inMicroseconds / d.inMicroseconds;
 
   @override
   void paint(Canvas canvas, Size size) {
     final cell = size.width / boardSize;
     canvas.drawRRect(
       RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(cell * 0.35)),
-      Paint()..color = Palette.board,
+      Paint()..color = skin.board,
     );
-    final pad = cell * 0.0;
-    Rect rectAt(int r, int c) => Rect.fromLTWH(pad + c * cell, pad + r * cell, cell, cell);
+    Rect rectAt(int r, int c) => Rect.fromLTWH(c * cell, r * cell, cell, cell);
 
     final ghostCells = <int>{};
     if (ghost != null) {
@@ -142,6 +171,7 @@ class BoardPainter extends CustomPainter {
       }
     }
 
+    final blockArea = Path();
     for (var r = 0; r < boardSize; r++) {
       for (var c = 0; c < boardSize; c++) {
         final rect = rectAt(r, c);
@@ -149,19 +179,106 @@ class BoardPainter extends CustomPainter {
         final inClearLine = clearRows.contains(r) || clearCols.contains(c);
         if (v >= 0) {
           // Blocks in a line about to clear take the dragged piece's colour.
-          paintBlock(canvas, rect, Palette.blocks[inClearLine ? ghostColor : v]);
+          paintSkinBlock(canvas, rect, inClearLine ? ghostColor : v, skin, photo: photo);
+          blockArea.addRect(rect);
         } else if (ghostCells.contains(r * boardSize + c)) {
-          paintBlock(canvas, rect, Palette.blocks[ghostColor], opacity: 0.55);
+          paintSkinBlock(canvas, rect, ghostColor, skin, opacity: 0.55, photo: photo);
         } else {
-          paintEmptyCell(canvas, rect, Palette.emptyCell);
+          paintSkinEmpty(canvas, rect, skin);
         }
         if (inClearLine && (v >= 0 || ghostCells.contains(r * boardSize + c))) {
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(rect.deflate(cell * 0.05), Radius.circular(cell * 0.2)),
+          canvas.drawPath(
+            skinPath(skin.shape, rect.deflate(cell * 0.05)),
             Paint()..color = Colors.white.withValues(alpha: 0.25),
           );
         }
       }
+    }
+
+    // Diagonal shine sweeping across every block after a placement.
+    final glint = fx.glint;
+    if (glint != null) {
+      final t = _t(glint, BoardFx.glintDuration);
+      if (t >= 0 && t <= 1) {
+        canvas.save();
+        canvas.clipPath(blockArea);
+        final span = size.width * 2;
+        final x = -size.width * 0.6 + t * (span + size.width * 0.6);
+        final band = Rect.fromLTWH(x - size.width * 0.25, 0, size.width * 0.5, size.height);
+        canvas.translate(size.width / 2, size.height / 2);
+        canvas.rotate(-pi / 6);
+        canvas.translate(-size.width / 2, -size.height / 2);
+        canvas.drawRect(
+          band.inflate(size.height),
+          Paint()
+            ..shader = LinearGradient(
+              colors: [
+                Colors.white.withValues(alpha: 0),
+                Colors.white.withValues(alpha: 0.35),
+                Colors.white.withValues(alpha: 0),
+              ],
+            ).createShader(band),
+        );
+        canvas.restore();
+      }
+    }
+
+    // Flash on freshly placed cells.
+    for (final f in fx.flashes) {
+      final t = _t(f.start, PlaceFlash.duration);
+      if (t < 0 || t > 1) continue;
+      final k = (1 - t) * (1 - t);
+      for (final (r, c) in f.cells) {
+        final rect = rectAt(r, c);
+        canvas.drawPath(
+          skinPath(skin.shape, rect.deflate(cell * 0.05)),
+          Paint()..color = Colors.white.withValues(alpha: 0.55 * k),
+        );
+        canvas.drawPath(
+          skinPath(skin.shape, rect.inflate(cell * 0.08 * t)),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = cell * 0.08
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, cell * 0.12)
+            ..color = Colors.white.withValues(alpha: 0.7 * k),
+        );
+      }
+    }
+
+    // Light beams along cleared lines.
+    for (final b in fx.beams) {
+      final t = _t(b.start, LineBeam.duration);
+      if (t < 0 || t > 1) continue;
+      final line = b.isRow
+          ? Rect.fromLTWH(0, b.index * cell, size.width, cell)
+          : Rect.fromLTWH(b.index * cell, 0, cell, size.height);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(line.deflate(cell * 0.04), Radius.circular(cell * 0.3)),
+        Paint()
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, cell * 0.25)
+          ..color = const Color(0xFFFFF3C4).withValues(alpha: 0.65 * (1 - t)),
+      );
+      final pos = t * 1.4 - 0.2;
+      final grad = b.isRow
+          ? LinearGradient(
+              colors: [
+                Colors.white.withValues(alpha: 0),
+                Colors.white.withValues(alpha: 0.95),
+                Colors.white.withValues(alpha: 0),
+              ],
+              stops: [(pos - 0.15).clamp(0.0, 1.0), pos.clamp(0.0, 1.0), (pos + 0.15).clamp(0.0, 1.0)],
+            )
+          : LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.white.withValues(alpha: 0),
+                Colors.white.withValues(alpha: 0.95),
+                Colors.white.withValues(alpha: 0),
+              ],
+              stops: [(pos - 0.15).clamp(0.0, 1.0), pos.clamp(0.0, 1.0), (pos + 0.15).clamp(0.0, 1.0)],
+            );
+      canvas.drawRect(line.deflate(cell * 0.18), Paint()..shader = grad.createShader(line));
     }
 
     for (final b in blooms) {
@@ -195,25 +312,34 @@ class PiecePainter extends CustomPainter {
   final int color;
   final double cell;
   final double opacity;
-  PiecePainter(this.shape, this.color, this.cell, {this.opacity = 1});
+  final Skin skin;
+  final ui.Image? photo;
+  PiecePainter(this.shape, this.color, this.cell, {this.opacity = 1, required this.skin, this.photo});
 
   @override
   void paint(Canvas canvas, Size size) {
     final ox = (size.width - shape.cols * cell) / 2;
     final oy = (size.height - shape.rows * cell) / 2;
     for (final c in shape.cells) {
-      paintBlock(
+      paintSkinBlock(
         canvas,
         Rect.fromLTWH(ox + c.c * cell, oy + c.r * cell, cell, cell),
-        Palette.blocks[color],
+        color,
+        skin,
         opacity: opacity,
+        photo: photo,
       );
     }
   }
 
   @override
   bool shouldRepaint(covariant PiecePainter old) =>
-      old.shape != shape || old.color != color || old.cell != cell || old.opacity != opacity;
+      old.shape != shape ||
+      old.color != color ||
+      old.cell != cell ||
+      old.opacity != opacity ||
+      old.skin != skin ||
+      old.photo != photo;
 }
 
 /// The logo flower used on the home screen.

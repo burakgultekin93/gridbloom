@@ -65,5 +65,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Blokların üzerinde kendi fotoğrafını kullanmak için galerine erişim gerekiyor.</string>
 </dict>
 </plist>

@@ -4,6 +4,9 @@ import 'pieces.dart';
 
 const int boardSize = 8;
 
+/// Number of block looks; the look moves on each time the board is cleared.
+const int skinCount = 4;
+
 /// A piece waiting in the tray, with its colour index.
 class TrayPiece {
   final PieceShape shape;
@@ -20,12 +23,24 @@ class MoveResult {
 
   /// Cells removed by the clear, with the colour they had.
   final List<(int, int, int)> clearedCells;
+
+  /// Cells the piece was placed on, and the rows/columns that cleared.
+  final List<(int, int)> placedCells;
+  final List<int> clearedRows;
+  final List<int> clearedCols;
+
+  /// The block look changed because the board was cleared.
+  final bool skinChanged;
   const MoveResult({
     required this.points,
     required this.linesCleared,
     required this.multiplier,
     required this.boardCleared,
     required this.clearedCells,
+    this.placedCells = const [],
+    this.clearedRows = const [],
+    this.clearedCols = const [],
+    this.skinChanged = false,
   });
 }
 
@@ -40,6 +55,9 @@ class GameState {
   int streak; // consecutive clearing moves
   int movesSinceClear;
   bool gameOver;
+
+  /// Which block look is active (0 .. skinCount-1).
+  int skin;
   final Random _rng;
 
   GameState({Random? rng})
@@ -49,6 +67,7 @@ class GameState {
       streak = 0,
       movesSinceClear = 0,
       gameOver = false,
+      skin = 0,
       _rng = rng ?? Random() {
     _refillTray();
   }
@@ -142,7 +161,10 @@ class GameState {
       multiplier = streak;
       points += linePoints(lines) * multiplier;
       boardCleared = board.every((row) => row.every((v) => v == -1));
-      if (boardCleared) points += 300;
+      if (boardCleared) {
+        points += 300;
+        skin = (skin + 1) % skinCount;
+      }
     } else {
       movesSinceClear += 1;
       if (movesSinceClear >= 3) streak = 0;
@@ -158,6 +180,10 @@ class GameState {
       multiplier: multiplier,
       boardCleared: boardCleared,
       clearedCells: cleared,
+      placedCells: [for (final c in piece.shape.cells) (row + c.r, col + c.c)],
+      clearedRows: full.rows,
+      clearedCols: full.cols,
+      skinChanged: boardCleared,
     );
   }
 
@@ -210,6 +236,7 @@ class GameState {
     'score': score,
     'streak': streak,
     'movesSinceClear': movesSinceClear,
+    'skin': skin,
   };
 
   static GameState? fromJson(Map<String, dynamic> j) {
@@ -229,6 +256,7 @@ class GameState {
       g.score = j['score'] as int;
       g.streak = j['streak'] as int;
       g.movesSinceClear = j['movesSinceClear'] as int;
+      g.skin = (j['skin'] as int? ?? 0) % skinCount;
       if (g.tray.every((p) => p == null)) g._refillTray();
       g.gameOver = !g.tray.any((p) => p != null && g.fitsAnywhere(p.shape));
       return g;
