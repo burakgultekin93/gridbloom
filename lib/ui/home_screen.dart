@@ -4,6 +4,7 @@ import '../services/photo_store.dart';
 import '../services/storage.dart';
 import 'game_screen.dart';
 import 'painters.dart';
+import 'board_picture_sheet.dart';
 import 'palette.dart';
 import 'skins.dart';
 
@@ -21,21 +22,6 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(builder: (_) => GameScreen(resume: resume ? Storage.loadGame() : null)),
     );
     setState(() {});
-  }
-
-  Future<void> _pickPhoto() async {
-    try {
-      final ok = await PhotoStore.pick();
-      if (ok && mounted) {
-        setState(() {});
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fotoğraf tahtaya eklendi')));
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Fotoğraf açılamadı. Başka bir fotoğraf dene.')));
-      }
-    }
   }
 
   void _settings() {
@@ -61,26 +47,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 onChanged: (v) => set(() => Storage.haptics = v),
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library_rounded, color: Palette.leaf),
-                title: Text(
-                  PhotoStore.image.value == null ? 'Tahtaya kendi fotoğrafını koy' : 'Tahta fotoğrafını değiştir',
-                ),
-                subtitle: const Text('Bloklar yerleştikçe fotoğrafın tahtada ortaya çıkar'),
+                leading: const Icon(Icons.wallpaper_rounded, color: Palette.leaf),
+                title: const Text('Tahta fotoğrafı'),
+                subtitle: Text(boardPictureLabel()),
                 onTap: () async {
-                  await _pickPhoto();
+                  await showBoardPictureSheet(context);
                   set(() {});
+                  if (mounted) setState(() {});
                 },
               ),
-              if (PhotoStore.image.value != null)
-                ListTile(
-                  leading: const Icon(Icons.hide_image_rounded, color: Palette.soilLight),
-                  title: const Text('Fotoğrafı kaldır, renkli bloklara dön'),
-                  onTap: () async {
-                    await PhotoStore.clear();
-                    set(() {});
-                    if (mounted) setState(() {});
-                  },
-                ),
               ListTile(
                 title: const Text('Öğreticiyi tekrar göster'),
                 onTap: () {
@@ -156,13 +131,31 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: const Text('Yeni oyun', style: TextStyle(color: Palette.soil)),
                       ),
                     const SizedBox(height: 8),
-                    TextButton.icon(
-                      onPressed: _pickPhoto,
-                      icon: const Icon(Icons.photo_library_rounded, color: Palette.leaf),
-                      label: Text(
-                        PhotoStore.image.value == null ? 'Tahtaya kendi fotoğrafını koy' : 'Tahta fotoğrafını değiştir',
-                        style: const TextStyle(color: Palette.soil),
-                      ),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () async {
+                            await showBoardPictureSheet(context);
+                            if (mounted) setState(() {});
+                          },
+                          icon: const Icon(Icons.wallpaper_rounded, color: Palette.leaf),
+                          label: Text(
+                            'Tahta fotoğrafı: ${boardPictureLabel()}',
+                            style: const TextStyle(color: Palette.soil),
+                          ),
+                        ),
+                        if (PhotoStore.image.value != null)
+                          TextButton.icon(
+                            onPressed: () async {
+                              await PhotoStore.clear();
+                              if (mounted) setState(() {});
+                            },
+                            icon: const Icon(Icons.restart_alt_rounded, color: Palette.soilLight),
+                            label: const Text('Sıfırla', style: TextStyle(color: Palette.soilLight)),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     _patternPicker(),
