@@ -172,7 +172,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       final start = DateTime.now();
       for (final (row, col, color) in r.clearedCells) {
         // Stagger flowers outward a little for a ripple feel.
-        _blooms.add(Bloom(row, col, color, start.add(Duration(milliseconds: ((row + col) % 4) * 40))));
+        _blooms.add(Bloom(row, col, color, start.add(Duration(milliseconds: ((row + col) % 4) * 40)), heat: game.heat));
       }
       if (!_ticker.isActive) _ticker.start();
     }
@@ -369,6 +369,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                   skin: skins[game.skin],
                                   photo: PhotoStore.image.value,
                                   fx: _fx,
+                                  pattern: BlockPattern.values[Storage.pattern],
                                 ),
                               ),
                             ),
@@ -392,7 +393,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                 cell,
                                 opacity: 0.95,
                                 skin: skins[game.skin],
-                                photo: PhotoStore.image.value,
+                                pattern: BlockPattern.values[Storage.pattern],
                               ),
                             ),
                           ),
@@ -586,7 +587,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                           cell,
                           opacity: fits ? 1 : 0.35,
                           skin: skins[game.skin],
-                          photo: PhotoStore.image.value,
+                          pattern: BlockPattern.values[Storage.pattern],
                         ),
                       ),
               ),

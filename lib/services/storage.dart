@@ -15,6 +15,10 @@ class Storage {
   static int get best => _prefs.getInt('best') ?? 0;
   static set best(int v) => _prefs.setInt('best', v);
 
+  /// Index into BlockPattern.values.
+  static int get pattern => _prefs.getInt('pattern') ?? 0;
+  static set pattern(int v) => _prefs.setInt('pattern', v);
+
   static bool get haptics => _prefs.getBool('haptics') ?? true;
   static set haptics(bool v) => _prefs.setBool('haptics', v);
 

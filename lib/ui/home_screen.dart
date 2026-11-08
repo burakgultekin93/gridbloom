@@ -5,6 +5,7 @@ import '../services/storage.dart';
 import 'game_screen.dart';
 import 'painters.dart';
 import 'palette.dart';
+import 'skins.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final ok = await PhotoStore.pick();
       if (ok && mounted) {
         setState(() {});
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fotoğraf bloklara eklendi')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fotoğraf tahtaya eklendi')));
       }
     } catch (_) {
       if (mounted) {
@@ -62,9 +63,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ListTile(
                 leading: const Icon(Icons.photo_library_rounded, color: Palette.leaf),
                 title: Text(
-                  PhotoStore.image.value == null ? 'Bloklara kendi fotoğrafını koy' : 'Blok fotoğrafını değiştir',
+                  PhotoStore.image.value == null ? 'Tahtaya kendi fotoğrafını koy' : 'Tahta fotoğrafını değiştir',
                 ),
-                subtitle: const Text('Galeriden bir fotoğraf seç, tüm bloklarda görünsün'),
+                subtitle: const Text('Bloklar yerleştikçe fotoğrafın tahtada ortaya çıkar'),
                 onTap: () async {
                   await _pickPhoto();
                   set(() {});
@@ -159,10 +160,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: _pickPhoto,
                       icon: const Icon(Icons.photo_library_rounded, color: Palette.leaf),
                       label: Text(
-                        PhotoStore.image.value == null ? 'Bloklara kendi fotoğrafını koy' : 'Blok fotoğrafını değiştir',
+                        PhotoStore.image.value == null ? 'Tahtaya kendi fotoğrafını koy' : 'Tahta fotoğrafını değiştir',
                         style: const TextStyle(color: Palette.soil),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    _patternPicker(),
                     const SizedBox(height: 16),
                     Text('Rekor: ${Storage.best}', style: const TextStyle(color: Palette.soilLight, fontSize: 16)),
                   ],
@@ -174,4 +177,73 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Widget _patternPicker() {
+    final current = Storage.pattern;
+    return Column(
+      children: [
+        const Text(
+          'Blok deseni',
+          style: TextStyle(color: Palette.soilLight, fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 4,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: [
+            for (final p in BlockPattern.values)
+              Semantics(
+                button: true,
+                selected: p.index == current,
+                label: patternNames[p],
+                child: GestureDetector(
+                  onTap: () => setState(() => Storage.pattern = p.index),
+                  child: SizedBox(
+                    width: 54,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: p.index == current ? Palette.leaf : Colors.transparent,
+                              width: 2.5,
+                            ),
+                          ),
+                          child: CustomPaint(size: const Size(40, 40), painter: _PatternSample(p)),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          patternNames[p]!,
+                          style: TextStyle(
+                            color: Palette.soil,
+                            fontSize: 10.5,
+                            fontWeight: p.index == current ? FontWeight.w800 : FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _PatternSample extends CustomPainter {
+  final BlockPattern pattern;
+  _PatternSample(this.pattern);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    paintSkinBlock(canvas, Offset.zero & size, pattern.index % 6, skins[0], pattern: pattern);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PatternSample old) => old.pattern != pattern;
 }

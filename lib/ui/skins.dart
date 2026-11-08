@@ -68,13 +68,43 @@ Path skinPath(SkinShape shape, Rect cell) {
   }
 }
 
-/// Draws one block in the given look and colour, optionally with the
-/// player's own photo inside it.
-void paintSkinBlock(Canvas canvas, Rect rect, int colorIndex, Skin skin, {double opacity = 1, ui.Image? photo}) {
+/// Patterns the player can pick for the blocks.
+enum BlockPattern { none, stripes, dots, checks, waves, stars }
+
+const patternNames = <BlockPattern, String>{
+  BlockPattern.none: 'Düz',
+  BlockPattern.stripes: 'Çizgili',
+  BlockPattern.dots: 'Puantiyeli',
+  BlockPattern.checks: 'Kareli',
+  BlockPattern.waves: 'Dalgalı',
+  BlockPattern.stars: 'Yıldızlı',
+};
+
+/// The part of [photo] that belongs to board cell (row, col), so that all
+/// blocks on the board together show one picture.
+Rect photoPiece(ui.Image photo, int row, int col, int gridSize) {
+  final iw = photo.width.toDouble(), ih = photo.height.toDouble();
+  final side = min(iw, ih);
+  final step = side / gridSize;
+  return Rect.fromLTWH((iw - side) / 2 + col * step, (ih - side) / 2 + row * step, step, step);
+}
+
+/// Draws one block in the given look and colour. With [photo] and
+/// [photoSrc] it shows that piece of the player's photo instead.
+void paintSkinBlock(
+  Canvas canvas,
+  Rect rect,
+  int colorIndex,
+  Skin skin, {
+  double opacity = 1,
+  ui.Image? photo,
+  Rect? photoSrc,
+  BlockPattern pattern = BlockPattern.none,
+}) {
   final color = skin.colors[colorIndex % skin.colors.length];
   final cell = rect.deflate(rect.width * 0.05);
-  if (photo != null) {
-    _photoBlock(canvas, cell, color, skin.shape, photo, opacity);
+  if (photo != null && photoSrc != null) {
+    _photoBlock(canvas, rect, skin.shape, photo, photoSrc, opacity);
     return;
   }
   switch (skin.shape) {
@@ -86,6 +116,67 @@ void paintSkinBlock(Canvas canvas, Rect rect, int colorIndex, Skin skin, {double
       _bubble(canvas, cell, color, opacity);
     case SkinShape.leaf:
       _leaf(canvas, cell, color, opacity);
+  }
+  if (pattern != BlockPattern.none) {
+    canvas.save();
+    canvas.clipPath(skinPath(skin.shape, cell));
+    paintPattern(canvas, cell, pattern, shade(color, 0.28).withValues(alpha: 0.55 * opacity));
+    canvas.restore();
+  }
+}
+
+/// Draws [pattern] over [r] in [ink]; the caller clips to the block.
+void paintPattern(Canvas canvas, Rect r, BlockPattern pattern, Color ink) {
+  final w = r.width;
+  final fill = Paint()..color = ink;
+  final line = Paint()
+    ..color = ink
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round
+    ..strokeWidth = max(1, w * 0.07);
+  switch (pattern) {
+    case BlockPattern.none:
+      return;
+    case BlockPattern.stripes:
+      for (var k = -3; k <= 4; k++) {
+        final x = r.left + k * w * 0.26;
+        canvas.drawLine(Offset(x, r.bottom), Offset(x + w, r.top), line);
+      }
+    case BlockPattern.dots:
+      for (var i = 0; i < 3; i++) {
+        for (var j = 0; j < 3; j++) {
+          final shift = j.isOdd ? w * 0.14 : 0.0;
+          canvas.drawCircle(Offset(r.left + w * (0.2 + 0.3 * i) + shift, r.top + w * (0.2 + 0.3 * j)), w * 0.07, fill);
+        }
+      }
+    case BlockPattern.checks:
+      final n = 4, s = w / n;
+      for (var i = 0; i < n; i++) {
+        for (var j = 0; j < n; j++) {
+          if ((i + j).isEven) canvas.drawRect(Rect.fromLTWH(r.left + i * s, r.top + j * s, s, s), fill);
+        }
+      }
+    case BlockPattern.waves:
+      for (var k = 0; k < 3; k++) {
+        final y0 = r.top + w * (0.25 + 0.27 * k);
+        final path = Path()..moveTo(r.left, y0);
+        for (var x = 0.0; x <= w; x += w / 16) {
+          path.lineTo(r.left + x, y0 + sin(x / w * 2 * pi * 1.5) * w * 0.07);
+        }
+        canvas.drawPath(path, line..strokeWidth = max(1, w * 0.06));
+      }
+    case BlockPattern.stars:
+      for (final (fx, fy, fs) in const [(0.3, 0.32, 0.15), (0.7, 0.62, 0.13), (0.72, 0.24, 0.08), (0.28, 0.76, 0.08)]) {
+        final c = Offset(r.left + w * fx, r.top + w * fy);
+        final path = Path();
+        for (var i = 0; i < 10; i++) {
+          final rad = i.isEven ? w * fs : w * fs * 0.45;
+          final ang = -pi / 2 + i * pi / 5;
+          final pt = c + Offset(cos(ang), sin(ang)) * rad;
+          i == 0 ? path.moveTo(pt.dx, pt.dy) : path.lineTo(pt.dx, pt.dy);
+        }
+        canvas.drawPath(path..close(), fill);
+      }
   }
 }
 
@@ -269,32 +360,40 @@ void _leaf(Canvas canvas, Rect cell, Color color, double a) {
   _sparkle(canvas, Offset(cell.left + cell.width * 0.3, cell.top + cell.height * 0.3), cell.width * 0.07, a);
 }
 
-/// The player's photo inside the block's outline, with a coloured frame.
-void _photoBlock(Canvas canvas, Rect cell, Color color, SkinShape shape, ui.Image photo, double a) {
-  final path = skinPath(shape, cell);
+/// One piece of the player's photo, nearly edge to edge so neighbouring
+/// blocks join into one picture, with a soft bevel to keep the block feel.
+void _photoBlock(Canvas canvas, Rect rect, SkinShape shape, ui.Image photo, Rect src, double a) {
+  final cell = rect.deflate(rect.width * 0.015);
+  final path = skinPath(shape == SkinShape.bubble ? SkinShape.bubble : SkinShape.gem, cell);
   canvas.save();
   canvas.clipPath(path);
-  final iw = photo.width.toDouble(), ih = photo.height.toDouble();
-  final side = min(iw, ih);
-  final src = Rect.fromLTWH((iw - side) / 2, (ih - side) / 2, side, side);
   canvas.drawImageRect(
     photo,
     src,
-    cell,
+    rect,
     Paint()
       ..color = Colors.white.withValues(alpha: a)
       ..filterQuality = FilterQuality.medium,
   );
-  canvas.drawRect(cell, Paint()..color = color.withValues(alpha: 0.22 * a));
-  canvas.restore();
-  canvas.drawPath(
-    path,
-    Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = max(2, cell.width * 0.09)
-      ..color = color.withValues(alpha: a),
+  // Light top-left edge and dark bottom-right edge.
+  final edge = cell.width * 0.08;
+  canvas.drawRect(
+    Rect.fromLTWH(cell.left, cell.top, cell.width, edge),
+    Paint()..color = Colors.white.withValues(alpha: 0.22 * a),
   );
-  _shine(canvas, cell.deflate(cell.width * 0.06), a * 0.7);
+  canvas.drawRect(
+    Rect.fromLTWH(cell.left, cell.top, edge, cell.height),
+    Paint()..color = Colors.white.withValues(alpha: 0.14 * a),
+  );
+  canvas.drawRect(
+    Rect.fromLTWH(cell.left, cell.bottom - edge, cell.width, edge),
+    Paint()..color = Colors.black.withValues(alpha: 0.18 * a),
+  );
+  canvas.drawRect(
+    Rect.fromLTWH(cell.right - edge, cell.top, edge, cell.height),
+    Paint()..color = Colors.black.withValues(alpha: 0.12 * a),
+  );
+  canvas.restore();
 }
 
 /// Empty hole on the board, matching the look.

@@ -25,8 +25,8 @@ class PhotoStore {
   static Future<bool> pick() async {
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
-      maxWidth: 256,
-      maxHeight: 256,
+      maxWidth: 1024,
+      maxHeight: 1024,
       imageQuality: 85,
     );
     if (file == null) return false;
@@ -45,7 +45,7 @@ class PhotoStore {
   }
 
   static Future<ui.Image> _decode(Uint8List bytes) async {
-    final codec = await ui.instantiateImageCodec(bytes, targetWidth: 256);
+    final codec = await ui.instantiateImageCodec(bytes, targetWidth: 768);
     return (await codec.getNextFrame()).image;
   }
 }

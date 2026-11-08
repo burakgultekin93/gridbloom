@@ -84,7 +84,10 @@ void paintBlock(Canvas canvas, Rect rect, Color color, {double opacity = 1}) {
 class Bloom {
   final int r, c, color;
   final DateTime start;
-  Bloom(this.r, this.c, this.color, this.start);
+
+  /// Streak heat when the flower opened: hot streaks give burning flowers.
+  final double heat;
+  Bloom(this.r, this.c, this.color, this.start, {this.heat = 0});
   static const duration = Duration(milliseconds: 700);
 }
 
@@ -137,6 +140,7 @@ class BoardPainter extends CustomPainter {
   final Skin skin;
   final ui.Image? photo;
   final BoardFx fx;
+  final BlockPattern pattern;
 
   BoardPainter({
     required this.game,
@@ -151,6 +155,7 @@ class BoardPainter extends CustomPainter {
     required this.skin,
     required this.photo,
     required this.fx,
+    required this.pattern,
   });
 
   double _t(DateTime start, Duration d) => now.difference(start).inMicroseconds / d.inMicroseconds;
@@ -179,10 +184,27 @@ class BoardPainter extends CustomPainter {
         final inClearLine = clearRows.contains(r) || clearCols.contains(c);
         if (v >= 0) {
           // Blocks in a line about to clear take the dragged piece's colour.
-          paintSkinBlock(canvas, rect, inClearLine ? ghostColor : v, skin, photo: photo);
+          paintSkinBlock(
+            canvas,
+            rect,
+            inClearLine ? ghostColor : v,
+            skin,
+            photo: photo,
+            photoSrc: photo == null ? null : photoPiece(photo!, r, c, boardSize),
+            pattern: pattern,
+          );
           blockArea.addRect(rect);
         } else if (ghostCells.contains(r * boardSize + c)) {
-          paintSkinBlock(canvas, rect, ghostColor, skin, opacity: 0.55, photo: photo);
+          paintSkinBlock(
+            canvas,
+            rect,
+            ghostColor,
+            skin,
+            opacity: 0.55,
+            photo: photo,
+            photoSrc: photo == null ? null : photoPiece(photo!, r, c, boardSize),
+            pattern: pattern,
+          );
         } else {
           paintSkinEmpty(canvas, rect, skin);
         }
@@ -284,22 +306,61 @@ class BoardPainter extends CustomPainter {
     for (final b in blooms) {
       final t = now.difference(b.start).inMilliseconds / Bloom.duration.inMilliseconds;
       if (t < 0 || t > 1) continue;
-      _paintBloom(canvas, rectAt(b.r, b.c), b.color, t);
+      _paintBloom(canvas, rectAt(b.r, b.c), b.color, t, b.heat);
     }
   }
 
-  void _paintBloom(Canvas canvas, Rect rect, int color, double t) {
+  void _paintBloom(Canvas canvas, Rect rect, int color, double t, double heat) {
     final center = rect.center;
     final grow = Curves.easeOutBack.transform(min(1, t * 1.6));
     final fade = t < 0.6 ? 1.0 : 1 - (t - 0.6) / 0.4;
-    final petalR = rect.width * 0.2 * grow;
-    final dist = rect.width * 0.22 * grow;
-    final petal = Paint()..color = Palette.petals[color].withValues(alpha: fade);
+    final fire = ((heat - 0.25) / 0.5).clamp(0.0, 1.0);
+    final w = rect.width;
+
+    if (fire > 0) {
+      // Flames rise from the flower: glow, then three flickering tongues.
+      canvas.drawCircle(
+        center,
+        w * 0.55 * grow,
+        Paint()
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.25)
+          ..color = const Color(0xFFFF7A1A).withValues(alpha: 0.6 * fire * fade),
+      );
+      final lift = -w * 0.35 * t;
+      for (final (dx, hScale, col) in const [
+        (-0.18, 0.75, Color(0xFFD7301F)),
+        (0.18, 0.8, Color(0xFFD7301F)),
+        (0.0, 1.0, Color(0xFFF47B20)),
+        (0.0, 0.62, Color(0xFFFFD34D)),
+      ]) {
+        final flick = 0.85 + 0.15 * sin(t * 40 + dx * 30);
+        final h = w * 0.95 * hScale * fire * grow * flick;
+        final half = w * 0.2 * hScale * grow;
+        final base = center + Offset(dx * w, w * 0.15 + lift);
+        final tip = base + Offset(sin(t * 25 + dx * 9) * w * 0.05, -h);
+        final flame = Path()
+          ..moveTo(base.dx - half, base.dy)
+          ..quadraticBezierTo(base.dx - half * 1.1, base.dy - h * 0.55, tip.dx, tip.dy)
+          ..quadraticBezierTo(base.dx + half * 1.1, base.dy - h * 0.55, base.dx + half, base.dy)
+          ..arcToPoint(Offset(base.dx - half, base.dy), radius: Radius.circular(half), clockwise: true)
+          ..close();
+        canvas.drawPath(flame, Paint()..color = col.withValues(alpha: 0.9 * fade));
+      }
+    }
+
+    final petalR = w * 0.2 * grow;
+    final dist = w * 0.22 * grow;
+    final petalColor = Color.lerp(Palette.petals[color], const Color(0xFFFFB347), fire)!;
+    final petal = Paint()..color = petalColor.withValues(alpha: fade);
     for (var i = 0; i < 5; i++) {
       final a = i * 2 * pi / 5 - pi / 2 + t * 0.8;
       canvas.drawCircle(center + Offset(cos(a), sin(a)) * dist, petalR, petal);
     }
-    canvas.drawCircle(center, petalR * 0.8, Paint()..color = Palette.blocks[2].withValues(alpha: fade));
+    final heart = Color.lerp(Palette.blocks[2], const Color(0xFFD7301F), fire)!;
+    canvas.drawCircle(center, petalR * 0.8, Paint()..color = heart.withValues(alpha: fade));
+    if (fire > 0) {
+      canvas.drawCircle(center, petalR * 0.4, Paint()..color = const Color(0xFFFFF1A8).withValues(alpha: fade * fire));
+    }
   }
 
   @override
@@ -313,8 +374,15 @@ class PiecePainter extends CustomPainter {
   final double cell;
   final double opacity;
   final Skin skin;
-  final ui.Image? photo;
-  PiecePainter(this.shape, this.color, this.cell, {this.opacity = 1, required this.skin, this.photo});
+  final BlockPattern pattern;
+  PiecePainter(
+    this.shape,
+    this.color,
+    this.cell, {
+    this.opacity = 1,
+    required this.skin,
+    this.pattern = BlockPattern.none,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -327,7 +395,7 @@ class PiecePainter extends CustomPainter {
         color,
         skin,
         opacity: opacity,
-        photo: photo,
+        pattern: pattern,
       );
     }
   }
@@ -339,7 +407,7 @@ class PiecePainter extends CustomPainter {
       old.cell != cell ||
       old.opacity != opacity ||
       old.skin != skin ||
-      old.photo != photo;
+      old.pattern != pattern;
 }
 
 /// The logo flower used on the home screen.
