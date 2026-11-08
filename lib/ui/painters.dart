@@ -207,6 +207,21 @@ class BoardPainter extends CustomPainter {
           );
         } else {
           paintSkinEmpty(canvas, rect, skin);
+          // A faint preview of the board picture waiting to be revealed.
+          if (photo != null) {
+            final hole = rect.deflate(cell * 0.06);
+            canvas.save();
+            canvas.clipPath(skinPath(skin.shape, hole));
+            canvas.drawImageRect(
+              photo!,
+              photoPiece(photo!, r, c, boardSize),
+              rect,
+              Paint()
+                ..color = Colors.white.withValues(alpha: 0.3)
+                ..filterQuality = FilterQuality.medium,
+            );
+            canvas.restore();
+          }
         }
         if (inClearLine && (v >= 0 || ghostCells.contains(r * boardSize + c))) {
           canvas.drawPath(
