@@ -63,6 +63,9 @@ flutter:
 
   assets:
     - assets/sounds/
+    - assets/sounds/classic/
+    - assets/sounds/arcade/
+    - assets/sounds/pop/
 
   fonts:
     - family: Nunito

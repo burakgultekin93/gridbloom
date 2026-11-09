@@ -52,6 +52,37 @@ class _HomeScreenState extends State<HomeScreen> {
                     activeThumbColor: Palette.leaf,
                     onChanged: (v) => set(() => Storage.sound = v),
                   ),
+                  if (Storage.sound)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          const Text('Ses paketi', style: TextStyle(color: Palette.soilLight)),
+                          for (var i = 0; i < Sound.packs.length; i++)
+                            Padding(
+                              padding: EdgeInsets.zero,
+                              child: ChoiceChip(
+                                label: Text(Sound.packs[i].$2),
+                                selected: Sound.pack == i,
+                                selectedColor: Palette.leaf,
+                                showCheckmark: false,
+                                labelStyle: TextStyle(
+                                  color: Sound.pack == i ? Colors.white : Palette.soil,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                onSelected: (_) {
+                                  final done = Sound.setPack(i);
+                                  set(() {});
+                                  done.then((_) => set(() {}));
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   SwitchListTile(
                     title: const Text('Müzik'),
                     value: Storage.music,

@@ -245,12 +245,28 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     }
     for (final row in r.clearedRows) {
       _fx.bursts.add(
-        Burst(Offset(boardSize / 2, row + 0.5), kind, 1.6 + 0.4 * r.linesCleared, now, rnd.nextInt(1 << 30)),
+        Burst(
+          Offset(boardSize / 2, row + 0.5),
+          kind,
+          1.6 + 0.4 * r.linesCleared,
+          now,
+          rnd.nextInt(1 << 30),
+          spread: const Offset(boardSize / 2, 0),
+          streak: game.streak,
+        ),
       );
     }
     for (final col in r.clearedCols) {
       _fx.bursts.add(
-        Burst(Offset(col + 0.5, boardSize / 2), kind, 1.6 + 0.4 * r.linesCleared, now, rnd.nextInt(1 << 30)),
+        Burst(
+          Offset(col + 0.5, boardSize / 2),
+          kind,
+          1.6 + 0.4 * r.linesCleared,
+          now,
+          rnd.nextInt(1 << 30),
+          spread: const Offset(0, boardSize / 2),
+          streak: game.streak,
+        ),
       );
     }
     const mid = Offset(boardSize / 2, boardSize / 2);
@@ -262,7 +278,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       _fx.bursts.add(Burst(mid, kind, 3.5, now.add(const Duration(milliseconds: 90)), rnd.nextInt(1 << 30)));
       _fx.shake(now, 0.22);
     } else if (big) {
-      _fx.shake(now, 0.12);
+      _fx.shake(now, 0.14);
+    } else {
+      // A small punch even for a single line, so every clear feels like a hit.
+      _fx.shake(now, 0.06);
     }
   }
 

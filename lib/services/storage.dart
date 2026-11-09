@@ -28,6 +28,10 @@ class Storage {
   static bool get music => _prefs.getBool('music') ?? true;
   static set music(bool v) => _prefs.setBool('music', v);
 
+  /// Index into Sound.packs.
+  static int get soundPack => _prefs.getInt('soundPack') ?? 0;
+  static set soundPack(int v) => _prefs.setInt('soundPack', v);
+
   static bool get tutorialSeen => _prefs.getBool('tutorialSeen') ?? false;
   static set tutorialSeen(bool v) => _prefs.setBool('tutorialSeen', v);
 

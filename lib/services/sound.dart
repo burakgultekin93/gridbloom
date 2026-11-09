@@ -19,17 +19,17 @@ class Sound {
     'ice0', 'ice1', 'ice2', 'ice3', 'fire0', 'fire1', 'fire2', 'fire3',
   ];
 
+  /// Selectable sound packs: (folder, name shown in settings).
+  static const packs = [('classic', 'Klasik'), ('arcade', 'Arcade'), ('pop', 'Pop')];
+
+  static int get pack => Storage.soundPack.clamp(0, packs.length - 1);
+
   static Future<void> init() async {
     try {
       await AudioPlayer.global.setAudioContext(
         AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers, respectSilence: true).build(),
       );
-      for (final name in _effects) {
-        _pools[name] = await AudioPool.createFromAsset(
-          path: 'sounds/$name.wav',
-          maxPlayers: name.startsWith('ice') || name.startsWith('fire') || name == 'place' ? 4 : 2,
-        );
-      }
+      await _loadPack(pack);
       await _music.setReleaseMode(ReleaseMode.loop);
       await _music.setVolume(0.35);
       await _music.setSource(AssetSource('sounds/music.mp3'));
@@ -38,6 +38,35 @@ class Sound {
       // Audio is a nice-to-have: the game runs silently if it fails.
       debugPrint('Sound init failed: $e');
     }
+  }
+
+  static Future<void> _loadPack(int index) async {
+    final old = Map.of(_pools);
+    _pools.clear();
+    final dir = packs[index].$1;
+    for (final name in _effects) {
+      _pools[name] = await AudioPool.createFromAsset(
+        path: 'sounds/$dir/$name.wav',
+        maxPlayers: name.startsWith('ice') || name.startsWith('fire') || name == 'place' ? 4 : 2,
+      );
+    }
+    for (final p in old.values) {
+      p.dispose().catchError((Object _) {});
+    }
+  }
+
+  /// Switches to another sound pack and plays a short preview of it.
+  static Future<void> setPack(int index) async {
+    Storage.soundPack = index;
+    if (!_ready) return;
+    try {
+      await _loadPack(index);
+    } catch (e) {
+      debugPrint('Sound pack load failed: $e');
+      return;
+    }
+    play('ice1');
+    Future.delayed(const Duration(milliseconds: 450), () => play('fire2'));
   }
 
   static void play(String name, {double volume = 1}) {
