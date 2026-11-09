@@ -293,7 +293,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          backgroundColor: Palette.background,
+          backgroundColor: Palette.panel,
           title: Text(
             steps[i].$1,
             style: const TextStyle(color: Palette.soil, fontWeight: FontWeight.w700),
@@ -302,7 +302,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
           actions: [
             Text('${i + 1}/3  ', style: const TextStyle(color: Palette.soilLight)),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Palette.leaf),
+              style: FilledButton.styleFrom(backgroundColor: Palette.leaf, foregroundColor: Colors.white),
               onPressed: () {
                 if (i < steps.length - 1) {
                   set(() => i++);
@@ -323,7 +323,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     showDialog<void>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        backgroundColor: Palette.background,
+        backgroundColor: Palette.panel,
         title: const Text(
           'Duraklatıldı',
           style: TextStyle(color: Palette.soil, fontWeight: FontWeight.w700),
@@ -640,12 +640,16 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   Widget _gameOverOverlay() {
     return Positioned.fill(
       child: Container(
-        color: Palette.soil.withValues(alpha: 0.55),
+        color: Colors.black.withValues(alpha: 0.6),
         alignment: Alignment.center,
         child: Container(
           margin: const EdgeInsets.all(32),
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(color: Palette.background, borderRadius: BorderRadius.circular(24)),
+          decoration: BoxDecoration(
+            color: Palette.panel,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Palette.leaf.withValues(alpha: 0.5)),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -668,7 +672,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: Palette.leaf, padding: const EdgeInsets.all(14)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Palette.leaf,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(14),
+                  ),
                   onPressed: _restart,
                   child: const Text('Tekrar oyna', style: TextStyle(fontSize: 18)),
                 ),

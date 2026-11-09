@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _settings() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Palette.background,
+      backgroundColor: Palette.panel,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => SafeArea(
           child: Column(
@@ -81,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFDDEEF8), Color(0xFFF6F1E7), Color(0xFFFFE2C2)],
+            colors: [Color(0xFF123A5E), Color(0xFF0D1120), Color(0xFF3A1210)],
           ),
         ),
         child: SafeArea(
@@ -106,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 20),
                       ShaderMask(
                         shaderCallback: (r) => const LinearGradient(
-                          colors: [Color(0xFF3E8FE0), Color(0xFF8B5CF0), Color(0xFFFF6A2A), Color(0xFFD7301F)],
+                          colors: [Color(0xFF7FD3FF), Color(0xFFA98BFF), Color(0xFFFF8A3D), Color(0xFFFF4A2A)],
                         ).createShader(r),
                         child: const Text(
                           'Blazegrid',
@@ -128,7 +128,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: double.infinity,
                         child: FilledButton(
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFFF0642C),
+                            backgroundColor: Palette.leaf,
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.all(18),
                           ),
                           onPressed: () => _open(resume: hasSave),

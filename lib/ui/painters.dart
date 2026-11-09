@@ -6,87 +6,15 @@ import 'package:flutter/material.dart';
 import '../game/game_state.dart';
 import '../game/pieces.dart';
 import 'bursts.dart';
-import 'palette.dart';
 import 'skins.dart';
 
-Color _shade(Color c, double amount) {
-  final hsl = HSLColor.fromColor(c);
-  return hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0)).toColor();
-}
-
-/// Draws one block as a raised, glossy garden tile: a darker base edge,
-/// a face that brightens toward the top, a soft shine and a small sparkle.
-void paintBlock(Canvas canvas, Rect rect, Color color, {double opacity = 1}) {
-  final a = opacity;
-  final cell = rect.deflate(rect.width * 0.05);
-  final radius = Radius.circular(cell.width * 0.22);
-  final depth = cell.height * 0.09;
-
-  // Base edge, slightly lower, gives the tile thickness.
-  canvas.drawRRect(RRect.fromRectAndRadius(cell, radius), Paint()..color = _shade(color, -0.18).withValues(alpha: a));
-
-  // Face.
-  final face = Rect.fromLTRB(cell.left, cell.top, cell.right, cell.bottom - depth);
-  final faceR = RRect.fromRectAndRadius(face, radius);
-  canvas.drawRRect(
-    faceR,
-    Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          _shade(color, 0.10).withValues(alpha: a),
-          color.withValues(alpha: a),
-        ],
-      ).createShader(face),
-  );
-  canvas.drawRRect(
-    faceR.deflate(0.5),
-    Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = max(1, cell.width * 0.03)
-      ..color = _shade(color, 0.16).withValues(alpha: 0.6 * a),
-  );
-
-  // Shine across the upper part of the face.
-  final shine = Rect.fromLTWH(
-    face.left + face.width * 0.14,
-    face.top + face.height * 0.09,
-    face.width * 0.72,
-    face.height * 0.30,
-  );
-  canvas.drawRRect(
-    RRect.fromRectAndRadius(shine, Radius.circular(shine.height / 2)),
-    Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Colors.white.withValues(alpha: 0.45 * a),
-          Colors.white.withValues(alpha: 0.0),
-        ],
-      ).createShader(shine),
-  );
-
-  // Small sparkle in the upper left.
-  final sp = Offset(face.left + face.width * 0.26, face.top + face.height * 0.26);
-  final s = face.width * 0.07;
-  final star = Path()
-    ..moveTo(sp.dx, sp.dy - s)
-    ..quadraticBezierTo(sp.dx, sp.dy, sp.dx + s, sp.dy)
-    ..quadraticBezierTo(sp.dx, sp.dy, sp.dx, sp.dy + s)
-    ..quadraticBezierTo(sp.dx, sp.dy, sp.dx - s, sp.dy)
-    ..quadraticBezierTo(sp.dx, sp.dy, sp.dx, sp.dy - s)
-    ..close();
-  canvas.drawPath(star, Paint()..color = Colors.white.withValues(alpha: 0.85 * a));
-}
-
-/// A flower that opens and fades where a block was cleared.
+/// A cleared block that freezes and shatters (cold streak) or burns and
+/// breaks apart (hot streak).
 class Bloom {
   final int r, c, color;
   final DateTime start;
 
-  /// Streak heat when the flower opened: hot streaks give burning flowers.
+  /// Streak heat when the block cleared: hot streaks burn, cold ones freeze.
   final double heat;
   Bloom(this.r, this.c, this.color, this.start, {this.heat = 0});
   static const duration = Duration(milliseconds: 700);
@@ -346,62 +274,82 @@ class BoardPainter extends CustomPainter {
     for (final b in blooms) {
       final t = now.difference(b.start).inMilliseconds / Bloom.duration.inMilliseconds;
       if (t < 0 || t > 1) continue;
-      _paintBloom(canvas, rectAt(b.r, b.c), b.color, t, b.heat);
+      _paintShatter(canvas, rectAt(b.r, b.c), b.color, t, b.heat);
     }
 
     paintBursts(canvas, cell, fx.bursts, now);
   }
 
-  void _paintBloom(Canvas canvas, Rect rect, int color, double t, double heat) {
-    final center = rect.center;
-    final grow = Curves.easeOutBack.transform(min(1, t * 1.6));
-    final fade = t < 0.6 ? 1.0 : 1 - (t - 0.6) / 0.4;
-    final fire = ((heat - 0.25) / 0.5).clamp(0.0, 1.0);
+  void _paintShatter(Canvas canvas, Rect rect, int colorIndex, double t, double heat) {
+    final fire = heat >= 0.34;
     final w = rect.width;
+    final base = skin.colors[colorIndex % skin.colors.length];
+    final hot = fire ? const Color(0xFFFF8A2A) : const Color(0xFFE6F8FF);
 
-    if (fire > 0) {
-      // Flames rise from the flower: glow, then three flickering tongues.
+    // First the block lights up (frost or flame) and swells a little.
+    if (t < 0.28) {
+      final k = t / 0.28;
+      final grown = rect.inflate(w * 0.08 * k);
+      paintSkinBlock(canvas, grown, colorIndex, skin);
+      canvas.drawPath(skinPath(skin.shape, grown.deflate(w * 0.05)), Paint()..color = hot.withValues(alpha: 0.75 * k));
       canvas.drawCircle(
-        center,
-        w * 0.55 * grow,
+        rect.center,
+        w * 0.7,
         Paint()
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.25)
-          ..color = const Color(0xFFFF7A1A).withValues(alpha: 0.6 * fire * fade),
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.35)
+          ..color = hot.withValues(alpha: 0.5 * k),
       );
-      final lift = -w * 0.35 * t;
-      for (final (dx, hScale, col) in const [
-        (-0.18, 0.75, Color(0xFFD7301F)),
-        (0.18, 0.8, Color(0xFFD7301F)),
-        (0.0, 1.0, Color(0xFFF47B20)),
-        (0.0, 0.62, Color(0xFFFFD34D)),
-      ]) {
-        final flick = 0.85 + 0.15 * sin(t * 40 + dx * 30);
-        final h = w * 0.95 * hScale * fire * grow * flick;
-        final half = w * 0.2 * hScale * grow;
-        final base = center + Offset(dx * w, w * 0.15 + lift);
-        final tip = base + Offset(sin(t * 25 + dx * 9) * w * 0.05, -h);
-        final flame = Path()
-          ..moveTo(base.dx - half, base.dy)
-          ..quadraticBezierTo(base.dx - half * 1.1, base.dy - h * 0.55, tip.dx, tip.dy)
-          ..quadraticBezierTo(base.dx + half * 1.1, base.dy - h * 0.55, base.dx + half, base.dy)
-          ..arcToPoint(Offset(base.dx - half, base.dy), radius: Radius.circular(half), clockwise: true)
-          ..close();
-        canvas.drawPath(flame, Paint()..color = col.withValues(alpha: 0.9 * fade));
-      }
+      return;
     }
 
-    final petalR = w * 0.2 * grow;
-    final dist = w * 0.22 * grow;
-    final petalColor = Color.lerp(Palette.petals[color], const Color(0xFFFFB347), fire)!;
-    final petal = Paint()..color = petalColor.withValues(alpha: fade);
-    for (var i = 0; i < 5; i++) {
-      final a = i * 2 * pi / 5 - pi / 2 + t * 0.8;
-      canvas.drawCircle(center + Offset(cos(a), sin(a)) * dist, petalR, petal);
-    }
-    final heart = Color.lerp(Palette.blocks[2], const Color(0xFFD7301F), fire)!;
-    canvas.drawCircle(center, petalR * 0.8, Paint()..color = heart.withValues(alpha: fade));
-    if (fire > 0) {
-      canvas.drawCircle(center, petalR * 0.4, Paint()..color = const Color(0xFFFFF1A8).withValues(alpha: fade * fire));
+    // Then it breaks into four shards that fly apart, spin and fall.
+    final k = (t - 0.28) / 0.72;
+    final ease = Curves.easeOutCubic.transform(k);
+    final fade = 1 - k;
+    final c = rect.center;
+    final half = w * 0.45;
+    final corners = [
+      c + Offset(-half, -half),
+      c + Offset(half, -half),
+      c + Offset(half, half),
+      c + Offset(-half, half),
+    ];
+    final color = fire
+        ? Color.lerp(Color.lerp(base, const Color(0xFFFF8A2A), 0.6)!, const Color(0xFF3A1A10), k)!
+        : Color.lerp(base, Colors.white, 0.5 + 0.3 * k)!;
+    for (var i = 0; i < 4; i++) {
+      final a1 = corners[i], a2 = corners[(i + 1) % 4];
+      final mid = Offset((a1.dx + a2.dx) / 2, (a1.dy + a2.dy) / 2);
+      final dir = (mid - c) / half;
+      final move = dir * w * 0.9 * ease + Offset(0, w * (fire ? -0.4 : 0.6) * k * k);
+      final spin = (i.isEven ? 1 : -1) * 2.2 * ease;
+      final centroid = (c + a1 + a2) / 3;
+      canvas.save();
+      canvas.translate(centroid.dx + move.dx, centroid.dy + move.dy);
+      canvas.rotate(spin);
+      canvas.scale(1 - 0.4 * k);
+      final shard = Path()
+        ..moveTo(c.dx - centroid.dx, c.dy - centroid.dy)
+        ..lineTo(a1.dx - centroid.dx, a1.dy - centroid.dy)
+        ..lineTo(a2.dx - centroid.dx, a2.dy - centroid.dy)
+        ..close();
+      if (fire) {
+        canvas.drawPath(
+          shard,
+          Paint()
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.12)
+            ..color = const Color(0xFFFF6A1A).withValues(alpha: 0.6 * fade),
+        );
+      }
+      canvas.drawPath(shard, Paint()..color = color.withValues(alpha: fade));
+      canvas.drawPath(
+        shard,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = max(0.8, w * 0.03)
+          ..color = (fire ? const Color(0xFFFFE08A) : Colors.white).withValues(alpha: 0.8 * fade),
+      );
+      canvas.restore();
     }
   }
 
@@ -464,14 +412,16 @@ class LogoPainter extends CustomPainter {
     Color(0xFFE0301E),
   ];
 
+  static const _logoSkin = Skin('Logo', SkinShape.neon, _ramp, Color(0xFF111729), Color(0xFF1A2238));
+
   @override
   void paint(Canvas canvas, Size size) {
     final cell = size.width / 3;
     for (var i = 0; i < 9; i++) {
       if (i == 4) continue;
       final r = i ~/ 3, c = i % 3;
-      final color = _ramp[const [0, 1, 2, 4, 5][r + c]]; // ice at top left, fire at bottom right
-      paintBlock(canvas, Rect.fromLTWH(c * cell, r * cell, cell, cell), color);
+      // Ice at top left, fire at bottom right, drawn as neon blocks.
+      paintSkinBlock(canvas, Rect.fromLTWH(c * cell, r * cell, cell, cell), const [0, 1, 2, 4, 5][r + c], _logoSkin);
     }
     paintLogoFlame(canvas, Offset(size.width / 2, size.height / 2), cell * 1.2);
   }

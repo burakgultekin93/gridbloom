@@ -23,7 +23,7 @@ class BlazegridApp extends StatelessWidget {
       title: 'Blazegrid',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Palette.leaf, surface: Palette.background),
+        colorScheme: ColorScheme.fromSeed(seedColor: Palette.leaf, brightness: Brightness.dark, surface: Palette.panel),
         scaffoldBackgroundColor: Palette.background,
         useMaterial3: true,
         fontFamily: 'Nunito',

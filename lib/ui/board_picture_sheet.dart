@@ -10,7 +10,7 @@ Future<void> showBoardPictureSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Palette.background,
+    backgroundColor: Palette.panel,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
     builder: (ctx) => const _BoardPictureSheet(),
   );
@@ -73,7 +73,11 @@ class _BoardPictureSheetState extends State<_BoardPictureSheet> {
                 children: [
                   Expanded(
                     child: FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: Palette.leaf, padding: const EdgeInsets.all(14)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Palette.leaf,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(14),
+                      ),
                       onPressed: _busy
                           ? null
                           : () => _run(() async {

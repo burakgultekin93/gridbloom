@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../game/game_state.dart';
 
-/// Background colours along the heat scale: ice, garden, warm, fire.
+/// Background colours along the heat scale: ice, night, warm, fire.
 const _stops = <double>[0, 0.35, 0.7, 1];
-const _topColors = <Color>[Color(0xFFDDEEF8), Color(0xFFF6F1E7), Color(0xFFFFD6A0), Color(0xFFF0642C)];
-const _bottomColors = <Color>[Color(0xFFB9D7EC), Color(0xFFEFE4CF), Color(0xFFF7A260), Color(0xFF8E1F12)];
+const _topColors = <Color>[Color(0xFF123A5E), Color(0xFF1A1E3A), Color(0xFF4A1C38), Color(0xFF8A2410)];
+const _bottomColors = <Color>[Color(0xFF071A2E), Color(0xFF0B0E1C), Color(0xFF220C1C), Color(0xFF300804)];
 
 Color _along(List<Color> colors, double h) {
   for (var i = 0; i < _stops.length - 1; i++) {
@@ -22,9 +22,8 @@ Color _along(List<Color> colors, double h) {
 Color heatTop(double h) => _along(_topColors, h);
 Color heatBottom(double h) => _along(_bottomColors, h);
 
-/// Text on the background: dark soil on light, cream on fire.
-Color heatInk(double h) =>
-    Color.lerp(const Color(0xFF5B4636), const Color(0xFFFFF4E0), ((h - 0.6) / 0.25).clamp(0.0, 1.0))!;
+/// Text on the background: icy white when cold, warm white when hot.
+Color heatInk(double h) => Color.lerp(const Color(0xFFDDEBFF), const Color(0xFFFFEEDC), h.clamp(0.0, 1.0))!;
 
 String heatLabel(double h) {
   if (h <= 0) return 'Soğuk';
