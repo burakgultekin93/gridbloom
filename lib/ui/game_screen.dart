@@ -56,7 +56,8 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    game = widget.resume ?? GameState();
+    game = widget.resume ?? GameState(best: Storage.best);
+    game.best = max(game.best, Storage.best);
     _best = Storage.best;
     _heat = game.heat;
     _ticker = createTicker((elapsed) {
@@ -181,12 +182,29 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     if (r.boardCleared) {
       _blazeStart = DateTime.now();
     }
-    final praise = praiseFor(r);
+    // Beating the record that stood when this game started: a big blast.
+    final brokeRecord = game.best > 0 && game.score > game.best && game.score - r.points <= game.best;
+    if (brokeRecord) {
+      final rnd = Random();
+      const mid = Offset(boardSize / 2, boardSize / 2);
+      _fx.bursts.add(Burst(mid, BurstKind.fire, 6, now, rnd.nextInt(1 << 30)));
+      _fx.bursts.add(Burst(mid, BurstKind.ice, 4, now.add(const Duration(milliseconds: 220)), rnd.nextInt(1 << 30)));
+      _fx.shake(now, 0.3);
+      _blazeStart = now;
+      if (Storage.haptics) {
+        HapticFeedback.heavyImpact();
+        Future.delayed(const Duration(milliseconds: 150), HapticFeedback.heavyImpact);
+      }
+    }
+    final praise = brokeRecord ? 'YENİ REKOR!' : (praiseFor(r) ?? (r.goalsDone.isNotEmpty ? 'Görev tamam!' : null));
     if (praise != null) {
       final parts = <String>['+${r.points}'];
       if (r.linesCleared >= 2) parts.add('${r.linesCleared} çizgi');
       if (r.multiplier >= 2) parts.add('seri x${r.multiplier}');
       if (r.skinChanged) parts.add('yeni görünüm: ${skins[game.skin].name}');
+      for (final g in r.goalsDone) {
+        parts.add('görev +${goalBonus[g]}');
+      }
       setState(() {
         _praise = praise;
         _praiseSub = parts.join(' · ');
@@ -272,7 +290,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   void _restart() {
     Storage.clearSavedGame();
     setState(() {
-      game = GameState();
+      game = GameState(best: Storage.best);
       _newBest = false;
       _blooms.clear();
       _fx.clear();
@@ -385,6 +403,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                         children: [
                           _topBar(shownHeat),
                           _heatMeter(shownHeat),
+                          _goalsRow(heatInk(shownHeat)),
                           const Spacer(),
                           Center(
                             child: Transform.translate(
@@ -477,6 +496,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 '${game.score}',
                 style: TextStyle(color: ink, fontSize: 40, fontWeight: FontWeight.w800, height: 1.1),
               ),
+              _recordChase(ink),
             ],
           ),
           const Spacer(),
@@ -491,6 +511,84 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// "Rekora 120 puan kaldı" with a thin bar, or a flame once it is beaten.
+  Widget _recordChase(Color ink) {
+    final target = game.best;
+    if (target <= 0) return const SizedBox(height: 18);
+    if (game.score > target) {
+      return const SizedBox(
+        height: 18,
+        child: Text(
+          '🔥 Yeni rekor',
+          style: TextStyle(color: Color(0xFFFFB347), fontSize: 13, fontWeight: FontWeight.w800),
+        ),
+      );
+    }
+    final left = target - game.score;
+    return SizedBox(
+      height: 18,
+      width: 150,
+      child: Column(
+        children: [
+          Text(
+            'Rekora $left puan kaldı',
+            style: TextStyle(color: ink.withValues(alpha: 0.8), fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 2),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: game.score / target,
+              minHeight: 3,
+              backgroundColor: ink.withValues(alpha: 0.15),
+              color: const Color(0xFFFF8A3D),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// This game's three mini goals; finished ones light up.
+  Widget _goalsRow(Color ink) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (final g in game.goals)
+            Flexible(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: game.goalsDone.contains(g)
+                      ? const Color(0xFFFF8A3D).withValues(alpha: 0.25)
+                      : ink.withValues(alpha: 0.08),
+                  border: Border.all(
+                    color: game.goalsDone.contains(g) ? const Color(0xFFFFB347) : ink.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '${game.goalsDone.contains(g) ? '✓ ' : ''}${goalText[g]}',
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: game.goalsDone.contains(g) ? const Color(0xFFFFD08A) : ink.withValues(alpha: 0.85),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
