@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/photo_store.dart';
+import '../services/sound.dart';
 import '../services/storage.dart';
 import 'game_screen.dart';
 import 'painters.dart';
@@ -29,51 +30,72 @@ class _HomeScreenState extends State<HomeScreen> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Palette.panel,
+      isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'Ayarlar',
-                  style: TextStyle(color: Palette.soil, fontSize: 20, fontWeight: FontWeight.w700),
-                ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.85),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'Ayarlar',
+                      style: TextStyle(color: Palette.soil, fontSize: 20, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  SwitchListTile(
+                    title: const Text('Ses efektleri'),
+                    value: Storage.sound,
+                    activeThumbColor: Palette.leaf,
+                    onChanged: (v) => set(() => Storage.sound = v),
+                  ),
+                  SwitchListTile(
+                    title: const Text('Müzik'),
+                    value: Storage.music,
+                    activeThumbColor: Palette.leaf,
+                    onChanged: (v) {
+                      set(() => Storage.music = v);
+                      Sound.applyMusicSetting();
+                    },
+                  ),
+                  SwitchListTile(
+                    title: const Text('Titreşim'),
+                    value: Storage.haptics,
+                    activeThumbColor: Palette.leaf,
+                    onChanged: (v) => set(() => Storage.haptics = v),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.wallpaper_rounded, color: Palette.leaf),
+                    title: const Text('Tahta fotoğrafı'),
+                    subtitle: Text(boardPictureLabel()),
+                    onTap: () async {
+                      await showBoardPictureSheet(context);
+                      set(() {});
+                      if (mounted) setState(() {});
+                    },
+                  ),
+                  ListTile(
+                    title: const Text('Öğreticiyi tekrar göster'),
+                    onTap: () {
+                      Storage.tutorialSeen = false;
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                  ListTile(
+                    title: const Text('Gizlilik politikası'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyScreen()));
+                    },
+                  ),
+                  const ListTile(title: Text('Destek'), subtitle: Text('avburakgultekin@icloud.com')),
+                  const SizedBox(height: 8),
+                ],
               ),
-              SwitchListTile(
-                title: const Text('Titreşim'),
-                value: Storage.haptics,
-                activeThumbColor: Palette.leaf,
-                onChanged: (v) => set(() => Storage.haptics = v),
-              ),
-              ListTile(
-                leading: const Icon(Icons.wallpaper_rounded, color: Palette.leaf),
-                title: const Text('Tahta fotoğrafı'),
-                subtitle: Text(boardPictureLabel()),
-                onTap: () async {
-                  await showBoardPictureSheet(context);
-                  set(() {});
-                  if (mounted) setState(() {});
-                },
-              ),
-              ListTile(
-                title: const Text('Öğreticiyi tekrar göster'),
-                onTap: () {
-                  Storage.tutorialSeen = false;
-                  Navigator.pop(ctx);
-                },
-              ),
-              ListTile(
-                title: const Text('Gizlilik politikası'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyScreen()));
-                },
-              ),
-              const ListTile(title: Text('Destek'), subtitle: Text('avburakgultekin@icloud.com')),
-              const SizedBox(height: 8),
-            ],
+            ),
           ),
         ),
       ),

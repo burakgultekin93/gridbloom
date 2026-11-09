@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../game/game_state.dart';
 import '../services/monetization.dart';
 import '../services/photo_store.dart';
+import '../services/sound.dart';
 import '../services/storage.dart';
 import 'bursts.dart';
 import 'effects.dart';
@@ -107,6 +108,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
   void _onDragStart(int i, Offset global) {
     if (game.tray[i] == null || game.gameOver) return;
+    Sound.play('pick');
     setState(() {
       _dragIndex = i;
       _dragPos = _toStack(global);
@@ -161,6 +163,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
   void _afterMove(MoveResult r) {
     _haptics(r);
+    _sounds(r);
     final now = DateTime.now();
     _fx.flashes.add(PlaceFlash(r.placedCells, now));
     _fx.glint = now;
@@ -196,6 +199,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         Future.delayed(const Duration(milliseconds: 150), HapticFeedback.heavyImpact);
       }
     }
+    if (brokeRecord && !r.boardCleared) Sound.play('big');
     final praise = brokeRecord ? 'YENİ REKOR!' : (praiseFor(r) ?? (r.goalsDone.isNotEmpty ? 'Görev tamam!' : null));
     if (praise != null) {
       final parts = <String>['+${r.points}'];
@@ -219,6 +223,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     if (game.gameOver) {
       Storage.clearSavedGame();
       Storage.gamesPlayed = Storage.gamesPlayed + 1;
+      Future.delayed(const Duration(milliseconds: 400), () => Sound.play('gameover'));
       Future.delayed(const Duration(milliseconds: 700), () {
         if (mounted) setState(() {});
       });
@@ -258,6 +263,20 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       _fx.shake(now, 0.22);
     } else if (big) {
       _fx.shake(now, 0.12);
+    }
+  }
+
+  /// Sound for a move: a soft landing, then ice or fire for clears.
+  void _sounds(MoveResult r) {
+    Sound.play('place', volume: 0.7);
+    if (r.linesCleared > 0) {
+      Sound.clear(fire: game.heat >= 0.34, streak: game.streak, lines: r.linesCleared);
+    }
+    if (r.boardCleared) {
+      Future.delayed(const Duration(milliseconds: 120), () => Sound.play('big'));
+    }
+    if (r.goalsDone.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 350), () => Sound.play('goal'));
     }
   }
 

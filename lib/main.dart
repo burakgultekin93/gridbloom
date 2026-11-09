@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'services/photo_store.dart';
+import 'services/sound.dart';
 import 'services/storage.dart';
 import 'ui/home_screen.dart';
 import 'ui/palette.dart';
@@ -12,8 +13,15 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await Storage.init();
   await PhotoStore.load();
+  await Sound.init();
+  Sound.startMusic();
+  // Pause the music while the app is in the background.
+  _lifecycle = AppLifecycleListener(onHide: Sound.stopMusic, onShow: Sound.applyMusicSetting);
   runApp(const BlazegridApp());
 }
+
+// ignore: unused_element
+late final AppLifecycleListener _lifecycle;
 
 class BlazegridApp extends StatelessWidget {
   const BlazegridApp({super.key});

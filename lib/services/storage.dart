@@ -22,6 +22,12 @@ class Storage {
   static bool get haptics => _prefs.getBool('haptics') ?? true;
   static set haptics(bool v) => _prefs.setBool('haptics', v);
 
+  static bool get sound => _prefs.getBool('sound') ?? true;
+  static set sound(bool v) => _prefs.setBool('sound', v);
+
+  static bool get music => _prefs.getBool('music') ?? true;
+  static set music(bool v) => _prefs.setBool('music', v);
+
   static bool get tutorialSeen => _prefs.getBool('tutorialSeen') ?? false;
   static set tutorialSeen(bool v) => _prefs.setBool('tutorialSeen', v);
 
