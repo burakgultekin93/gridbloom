@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../l10n.dart';
+
 import '../game/game_state.dart';
 
 /// Background colours along the heat scale: ice, night, warm, fire.
@@ -26,11 +28,11 @@ Color heatBottom(double h) => _along(_bottomColors, h);
 Color heatInk(double h) => Color.lerp(const Color(0xFFDDEBFF), const Color(0xFFFFEEDC), h.clamp(0.0, 1.0))!;
 
 String heatLabel(double h) {
-  if (h <= 0) return 'Soğuk';
-  if (h < 0.35) return 'Ilık';
-  if (h < 0.7) return 'Sıcak';
-  if (h < 1) return 'Kızgın';
-  return 'Alev!';
+  if (h <= 0) return tx('Soğuk');
+  if (h < 0.35) return tx('Ilık');
+  if (h < 0.7) return tx('Sıcak');
+  if (h < 1) return tx('Kızgın');
+  return tx('Alev!');
 }
 
 /// Snow when cold, rising embers and flames when hot, and a full blaze
@@ -111,14 +113,14 @@ class HeatEffectsPainter extends CustomPainter {
 
 /// A short cheer for a good move, or null for an ordinary one.
 String? praiseFor(MoveResult r) {
-  if (r.boardCleared) return 'Tahta tertemiz!';
-  if (r.linesCleared >= 5) return 'İnanılmaz!';
-  if (r.linesCleared == 4) return 'Efsane!';
-  if (r.linesCleared == 3) return 'Muhteşem!';
-  if (r.multiplier >= 6) return 'Yanıyorsun!';
-  if (r.multiplier >= 4) return 'Durdurulamaz!';
-  if (r.linesCleared == 2) return 'Harika!';
-  if (r.multiplier >= 2) return 'Süper!';
-  if (r.linesCleared == 1) return 'Güzel!';
+  if (r.boardCleared) return tx('Tahta tertemiz!');
+  if (r.linesCleared >= 5) return tx('İnanılmaz!');
+  if (r.linesCleared == 4) return tx('Efsane!');
+  if (r.linesCleared == 3) return tx('Muhteşem!');
+  if (r.multiplier >= 6) return tx('Yanıyorsun!');
+  if (r.multiplier >= 4) return tx('Durdurulamaz!');
+  if (r.linesCleared == 2) return tx('Harika!');
+  if (r.multiplier >= 2) return tx('Süper!');
+  if (r.linesCleared == 1) return tx('Güzel!');
   return null;
 }

@@ -28,6 +28,10 @@ class Storage {
   static bool get music => _prefs.getBool('music') ?? true;
   static set music(bool v) => _prefs.setBool('music', v);
 
+  /// 0 follows the phone, 1 Turkish, 2 English.
+  static int get language => _prefs.getInt('language') ?? 0;
+  static set language(int v) => _prefs.setInt('language', v);
+
   /// Index into Sound.packs.
   static int get soundPack => _prefs.getInt('soundPack') ?? 0;
   static set soundPack(int v) => _prefs.setInt('soundPack', v);

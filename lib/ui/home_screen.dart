@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n.dart';
+
 import '../services/photo_store.dart';
 import '../services/sound.dart';
 import '../services/storage.dart';
@@ -39,15 +41,15 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.all(16),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Text(
-                      'Ayarlar',
-                      style: TextStyle(color: Palette.soil, fontSize: 20, fontWeight: FontWeight.w700),
+                      tx('Ayarlar'),
+                      style: const TextStyle(color: Palette.soil, fontSize: 20, fontWeight: FontWeight.w700),
                     ),
                   ),
                   SwitchListTile(
-                    title: const Text('Ses efektleri'),
+                    title: Text(tx('Ses efektleri')),
                     value: Storage.sound,
                     activeThumbColor: Palette.leaf,
                     onChanged: (v) => set(() => Storage.sound = v),
@@ -60,12 +62,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         runSpacing: 6,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          const Text('Ses paketi', style: TextStyle(color: Palette.soilLight)),
+                          Text(tx('Ses paketi'), style: TextStyle(color: Palette.soilLight)),
                           for (var i = 0; i < Sound.packs.length; i++)
                             Padding(
                               padding: EdgeInsets.zero,
                               child: ChoiceChip(
-                                label: Text(Sound.packs[i].$2),
+                                label: Text(tx(Sound.packs[i].$2)),
                                 selected: Sound.pack == i,
                                 selectedColor: Palette.leaf,
                                 showCheckmark: false,
@@ -84,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   SwitchListTile(
-                    title: const Text('Müzik'),
+                    title: Text(tx('Müzik')),
                     value: Storage.music,
                     activeThumbColor: Palette.leaf,
                     onChanged: (v) {
@@ -93,14 +95,41 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                   SwitchListTile(
-                    title: const Text('Titreşim'),
+                    title: Text(tx('Titreşim')),
                     value: Storage.haptics,
                     activeThumbColor: Palette.leaf,
                     onChanged: (v) => set(() => Storage.haptics = v),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(tx('Dil'), style: const TextStyle(color: Palette.soilLight)),
+                        for (var i = 0; i < Lang.options.length; i++)
+                          ChoiceChip(
+                            label: Text(tx(Lang.options[i])),
+                            selected: Storage.language == i,
+                            selectedColor: Palette.leaf,
+                            showCheckmark: false,
+                            labelStyle: TextStyle(
+                              color: Storage.language == i ? Colors.white : Palette.soil,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            onSelected: (_) {
+                              Storage.language = i;
+                              set(() {});
+                              if (mounted) setState(() {});
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
                   ListTile(
                     leading: const Icon(Icons.wallpaper_rounded, color: Palette.leaf),
-                    title: const Text('Tahta fotoğrafı'),
+                    title: Text(tx('Tahta fotoğrafı')),
                     subtitle: Text(boardPictureLabel()),
                     onTap: () async {
                       await showBoardPictureSheet(context);
@@ -109,20 +138,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                   ListTile(
-                    title: const Text('Öğreticiyi tekrar göster'),
+                    title: Text(tx('Öğreticiyi tekrar göster')),
                     onTap: () {
                       Storage.tutorialSeen = false;
                       Navigator.pop(ctx);
                     },
                   ),
                   ListTile(
-                    title: const Text('Gizlilik politikası'),
+                    title: Text(tx('Gizlilik politikası')),
                     onTap: () {
                       Navigator.pop(ctx);
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyScreen()));
                     },
                   ),
-                  const ListTile(title: Text('Destek'), subtitle: Text('avburakgultekin@icloud.com')),
+                  ListTile(title: Text(tx('Destek')), subtitle: Text('avburakgultekin@icloud.com')),
                   const SizedBox(height: 8),
                 ],
               ),
@@ -154,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: IconButton(
                   onPressed: _settings,
                   icon: const Icon(Icons.settings_rounded, color: Palette.soil, size: 28),
-                  tooltip: 'Ayarlar',
+                  tooltip: tx('Ayarlar'),
                 ),
               ),
               Center(
@@ -169,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         shaderCallback: (r) => const LinearGradient(
                           colors: [Color(0xFF7FD3FF), Color(0xFFA98BFF), Color(0xFFFF8A3D), Color(0xFFFF4A2A)],
                         ).createShader(r),
-                        child: const Text(
+                        child: Text(
                           'Blazegrid',
                           style: TextStyle(
                             color: Colors.white,
@@ -179,8 +208,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-                      const Text(
-                        'Buzdan başla, seriyle alevlen',
+                      Text(
+                        tx('Buzdan başla, seriyle alevlen'),
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Palette.soilLight, fontSize: 16),
                       ),
@@ -195,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           onPressed: () => _open(resume: hasSave),
                           child: Text(
-                            hasSave ? 'Klasik mod · Devam et' : 'Klasik mod',
+                            hasSave ? tx('Klasik mod · Devam et') : tx('Klasik mod'),
                             style: const TextStyle(fontSize: 20),
                           ),
                         ),
@@ -206,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Storage.clearSavedGame();
                             _open(resume: false);
                           },
-                          child: const Text('Yeni oyun', style: TextStyle(color: Palette.soil)),
+                          child: Text(tx('Yeni oyun'), style: TextStyle(color: Palette.soil)),
                         ),
                       const SizedBox(height: 8),
                       Wrap(
@@ -220,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                             icon: const Icon(Icons.wallpaper_rounded, color: Palette.leaf),
                             label: Text(
-                              'Tahta fotoğrafı: ${boardPictureLabel()}',
+                              '${tx('Tahta fotoğrafı')}: ${boardPictureLabel()}',
                               style: const TextStyle(color: Palette.soil),
                             ),
                           ),
@@ -231,14 +260,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                 if (mounted) setState(() {});
                               },
                               icon: const Icon(Icons.restart_alt_rounded, color: Palette.soilLight),
-                              label: const Text('Sıfırla', style: TextStyle(color: Palette.soilLight)),
+                              label: Text(tx('Sıfırla'), style: TextStyle(color: Palette.soilLight)),
                             ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       _patternPicker(),
                       const SizedBox(height: 16),
-                      Text('Rekor: ${Storage.best}', style: const TextStyle(color: Palette.soilLight, fontSize: 16)),
+                      Text(
+                        '${tx('Rekor')}: ${Storage.best}',
+                        style: const TextStyle(color: Palette.soilLight, fontSize: 16),
+                      ),
                     ],
                   ),
                 ),
@@ -254,8 +286,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final current = Storage.pattern;
     return Column(
       children: [
-        const Text(
-          'Blok deseni',
+        Text(
+          tx('Blok deseni'),
           style: TextStyle(color: Palette.soilLight, fontSize: 14, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
@@ -268,7 +300,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Semantics(
                 button: true,
                 selected: p.index == current,
-                label: patternNames[p],
+                label: tx(patternNames[p]!),
                 child: GestureDetector(
                   onTap: () => setState(() => Storage.pattern = p.index),
                   child: SizedBox(
@@ -288,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          patternNames[p]!,
+                          tx(patternNames[p]!),
                           style: TextStyle(
                             color: Palette.soil,
                             fontSize: 10.5,

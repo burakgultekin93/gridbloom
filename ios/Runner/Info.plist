@@ -6,6 +6,11 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>tr</string>
+	</array>
 	
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
@@ -72,6 +77,6 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Tahtaya kendi fotoğrafını koymak için seçtiğin fotoğrafa erişim gerekiyor. Fotoğraf cihazından çıkmaz.</string>
+	<string>Pick a photo to show on your board. It never leaves your device. / Tahtada göstermek için bir fotoğraf seç. Fotoğraf cihazından çıkmaz.</string>
 </dict>
 </plist>

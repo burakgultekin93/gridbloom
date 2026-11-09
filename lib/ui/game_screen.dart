@@ -2,6 +2,9 @@ import 'dart:math';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+
+import '../l10n.dart';
+
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
@@ -200,14 +203,16 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       }
     }
     if (brokeRecord && !r.boardCleared) Sound.play('big');
-    final praise = brokeRecord ? 'YENİ REKOR!' : (praiseFor(r) ?? (r.goalsDone.isNotEmpty ? 'Görev tamam!' : null));
+    final praise = brokeRecord
+        ? tx('YENİ REKOR!')
+        : (praiseFor(r) ?? (r.goalsDone.isNotEmpty ? tx('Görev tamam!') : null));
     if (praise != null) {
       final parts = <String>['+${r.points}'];
-      if (r.linesCleared >= 2) parts.add('${r.linesCleared} çizgi');
-      if (r.multiplier >= 2) parts.add('seri x${r.multiplier}');
-      if (r.skinChanged) parts.add('yeni görünüm: ${skins[game.skin].name}');
+      if (r.linesCleared >= 2) parts.add(pick('${r.linesCleared} çizgi', '${r.linesCleared} lines'));
+      if (r.multiplier >= 2) parts.add('${tx('seri')} x${r.multiplier}');
+      if (r.skinChanged) parts.add('${tx('yeni görünüm')}: ${tx(skins[game.skin].name)}');
       for (final g in r.goalsDone) {
-        parts.add('görev +${goalBonus[g]}');
+        parts.add('${tx('görev')} +${goalBonus[g]}');
       }
       setState(() {
         _praise = praise;
@@ -338,10 +343,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _showTutorial() async {
-    const steps = [
-      ('Parçayı sürükle', 'Alttaki 3 parçadan birini tut ve tahtaya sürükle. Parçalar döndürülemez.'),
-      ('Çizgiyi doldur', 'Bir satır ya da sütun tamamen dolunca çiçek açarak temizlenir.'),
-      ('Seriyi sürdür', 'Aynı anda birden fazla çizgi temizle ve art arda temizleyerek puanını katla.'),
+    final steps = [
+      (tx('Parçayı sürükle'), tx('Alttaki 3 parçadan birini tut ve tahtaya sürükle. Parçalar döndürülemez.')),
+      (tx('Çizgiyi doldur'), tx('Bir satır ya da sütun tamamen dolunca patlayarak temizlenir.')),
+      (tx('Seriyi sürdür'), tx('Aynı anda birden fazla çizgi temizle ve art arda temizleyerek puanını katla.')),
     ];
     var i = 0;
     await showDialog<void>(
@@ -366,7 +371,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                   Navigator.pop(ctx);
                 }
               },
-              child: Text(i < steps.length - 1 ? 'İleri' : 'Başla'),
+              child: Text(i < steps.length - 1 ? tx('İleri') : tx('Başla')),
             ),
           ],
         ),
@@ -380,25 +385,25 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       context: context,
       builder: (ctx) => SimpleDialog(
         backgroundColor: Palette.panel,
-        title: const Text(
-          'Duraklatıldı',
+        title: Text(
+          tx('Duraklatıldı'),
           style: TextStyle(color: Palette.soil, fontWeight: FontWeight.w700),
         ),
         children: [
-          SimpleDialogOption(onPressed: () => Navigator.pop(ctx), child: const Text('Devam et')),
+          SimpleDialogOption(onPressed: () => Navigator.pop(ctx), child: Text(tx('Devam et'))),
           SimpleDialogOption(
             onPressed: () {
               Navigator.pop(ctx);
               _restart();
             },
-            child: const Text('Yeniden başla'),
+            child: Text(tx('Yeniden başla')),
           ),
           SimpleDialogOption(
             onPressed: () {
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
-            child: const Text('Ana menü'),
+            child: Text(tx('Ana menü')),
           ),
         ],
       ),
@@ -518,7 +523,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('REKOR', style: TextStyle(color: soft, fontSize: 12, letterSpacing: 1.2)),
+                Text(tx('REKOR'), style: TextStyle(color: soft, fontSize: 12, letterSpacing: 1.2)),
                 Text(
                   '$_best',
                   style: TextStyle(color: ink, fontSize: 18, fontWeight: FontWeight.w700),
@@ -529,7 +534,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
           const Spacer(),
           Column(
             children: [
-              Text('KLASİK', style: TextStyle(color: soft, fontSize: 12, letterSpacing: 2)),
+              Text(tx('KLASİK'), style: TextStyle(color: soft, fontSize: 12, letterSpacing: 2)),
               Text(
                 '${game.score}',
                 style: TextStyle(color: ink, fontSize: 40, fontWeight: FontWeight.w800, height: 1.1),
@@ -545,7 +550,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
               child: IconButton(
                 onPressed: _pause,
                 icon: Icon(Icons.pause_rounded, color: ink, size: 30),
-                tooltip: 'Duraklat',
+                tooltip: tx('Duraklat'),
               ),
             ),
           ),
@@ -559,11 +564,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     final target = game.best;
     if (target <= 0) return const SizedBox(height: 18);
     if (game.score > target) {
-      return const SizedBox(
+      return SizedBox(
         height: 18,
         child: Text(
-          '🔥 Yeni rekor',
-          style: TextStyle(color: Color(0xFFFFB347), fontSize: 13, fontWeight: FontWeight.w800),
+          tx('🔥 Yeni rekor'),
+          style: const TextStyle(color: Color(0xFFFFB347), fontSize: 13, fontWeight: FontWeight.w800),
         ),
       );
     }
@@ -574,7 +579,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       child: Column(
         children: [
           Text(
-            'Rekora $left puan kaldı',
+            pick('Rekora $left puan kaldı', '$left to beat your best'),
             style: TextStyle(color: ink.withValues(alpha: 0.8), fontSize: 12, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 2),
@@ -616,7 +621,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    '${game.goalsDone.contains(g) ? '✓ ' : ''}${goalText[g]}',
+                    '${game.goalsDone.contains(g) ? '✓ ' : ''}${tx(goalText[g]!)}',
                     maxLines: 1,
                     style: TextStyle(
                       color: game.goalsDone.contains(g) ? const Color(0xFFFFD08A) : ink.withValues(alpha: 0.85),
@@ -636,7 +641,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   Widget _heatMeter(double heat) {
     final ink = heatInk(heat);
     final barColor = Color.lerp(const Color(0xFF6FB3E0), const Color(0xFFFF5A1F), heat)!;
-    final label = game.streak >= 2 ? 'Seri x${game.streak} · ${heatLabel(heat)}' : heatLabel(heat);
+    final label = game.streak >= 2 ? '${tx('Seri')} x${game.streak} · ${heatLabel(heat)}' : heatLabel(heat);
     return Padding(
       padding: const EdgeInsets.fromLTRB(48, 6, 48, 0),
       child: Row(
@@ -790,7 +795,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                _newBest ? 'Yeni rekor!' : 'Yer kalmadı',
+                _newBest ? tx('Yeni rekor!') : tx('Yer kalmadı'),
                 style: const TextStyle(color: Palette.soil, fontSize: 26, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 12),
@@ -798,11 +803,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 '${game.score}',
                 style: const TextStyle(color: Palette.leaf, fontSize: 48, fontWeight: FontWeight.w800),
               ),
-              Text('Rekor: $_best', style: const TextStyle(color: Palette.soilLight, fontSize: 16)),
+              Text('${tx('Rekor')}: $_best', style: const TextStyle(color: Palette.soilLight, fontSize: 16)),
               const SizedBox(height: 20),
               if (Monetization.canOfferContinue) ...[
                 // Step 4: rewarded ad, continue once with 3 new pieces.
-                OutlinedButton(onPressed: () {}, child: const Text('Reklam izle, devam et')),
+                OutlinedButton(onPressed: () {}, child: Text(tx('Reklam izle, devam et'))),
                 const SizedBox(height: 8),
               ],
               SizedBox(
@@ -814,10 +819,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                     padding: const EdgeInsets.all(14),
                   ),
                   onPressed: _restart,
-                  child: const Text('Tekrar oyna', style: TextStyle(fontSize: 18)),
+                  child: Text(tx('Tekrar oyna'), style: TextStyle(fontSize: 18)),
                 ),
               ),
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Ana menü')),
+              TextButton(onPressed: () => Navigator.pop(context), child: Text(tx('Ana menü'))),
             ],
           ),
         ),

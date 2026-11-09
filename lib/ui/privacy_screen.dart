@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n.dart';
 import 'palette.dart';
 
 /// The privacy policy, shown inside the app. The same text is published on
@@ -7,7 +8,7 @@ import 'palette.dart';
 class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({super.key});
 
-  static const _sections = <(String, String)>[
+  static const _sectionsTr = <(String, String)>[
     ('Veri sorumlusu', 'Burak Gültekin. İletişim: avburakgultekin@icloud.com'),
     (
       'Topladığımız veriler',
@@ -34,6 +35,33 @@ class PrivacyScreen extends StatelessWidget {
     ),
   ];
 
+  static const _sectionsEn = <(String, String)>[
+    ('Data controller', 'Burak Gültekin. Contact: avburakgultekin@icloud.com'),
+    (
+      'Data we collect',
+      'This version of the game collects no personal data, sends nothing to a server and shares '
+          'nothing with third parties. There is no account, sign-in or registration.\n\n'
+          'Your best score, unfinished game, settings and the photo you pick for the board are stored '
+          'only on your device. The photo is scaled down, never uploaded, and can be removed with "Reset". '
+          'Deleting the game deletes all of this from your device.',
+    ),
+    (
+      'Permissions',
+      'The game opens the photo picker only when you tap "Choose from gallery". '
+          'It does not access the rest of your library.',
+    ),
+    (
+      'Ads',
+      'This version has no ads. If ads are added later, this policy will be updated first and your '
+          'consent will be asked where required.',
+    ),
+    (
+      'Your rights',
+      'To use your rights under the GDPR and Turkish data protection law (KVKK), or to ask a question, '
+          'contact us at the address above.',
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -41,16 +69,19 @@ class PrivacyScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Palette.background,
         foregroundColor: Palette.soil,
-        title: const Text('Gizlilik politikası'),
+        title: Text(tx('Gizlilik politikası')),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
-          const Text(
-            'Bu metin, Blazegrid oyununun kişisel verileri nasıl işlediğini KVKK ve GDPR kapsamında açıklar.',
-            style: TextStyle(color: Palette.soilLight, fontSize: 15, height: 1.5),
+          Text(
+            pick(
+              'Bu metin, Blazegrid oyununun kişisel verileri nasıl işlediğini KVKK ve GDPR kapsamında açıklar.',
+              'This explains how the Blazegrid game handles personal data under the GDPR and KVKK.',
+            ),
+            style: const TextStyle(color: Palette.soilLight, fontSize: 15, height: 1.5),
           ),
-          for (final (title, body) in _sections) ...[
+          for (final (title, body) in Lang.english ? _sectionsEn : _sectionsTr) ...[
             const SizedBox(height: 20),
             Text(
               title,

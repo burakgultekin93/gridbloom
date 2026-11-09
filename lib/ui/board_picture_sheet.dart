@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n.dart';
+
 import '../services/photo_store.dart';
 import 'palette.dart';
 import 'scenes.dart';
@@ -18,9 +20,9 @@ Future<void> showBoardPictureSheet(BuildContext context) {
 
 /// Short label for what the board shows now.
 String boardPictureLabel() {
-  if (PhotoStore.scene != null) return sceneNames[PhotoStore.scene!];
-  if (PhotoStore.image.value != null) return 'Kendi fotoğrafın';
-  return 'Yok';
+  if (PhotoStore.scene != null) return tx(sceneNames[PhotoStore.scene!]);
+  if (PhotoStore.image.value != null) return tx('Kendi fotoğrafın');
+  return tx('Yok');
 }
 
 class _BoardPictureSheet extends StatefulWidget {
@@ -40,7 +42,7 @@ class _BoardPictureSheetState extends State<_BoardPictureSheet> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Fotoğraf açılamadı. Başka bir fotoğraf dene.')));
+            .showSnackBar(SnackBar(content: Text(tx('Fotoğraf açılamadı. Başka bir fotoğraf dene.'))));
       }
     }
     if (mounted) setState(() => _busy = false);
@@ -57,14 +59,14 @@ class _BoardPictureSheetState extends State<_BoardPictureSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Tahta fotoğrafı',
+              Text(
+                tx('Tahta fotoğrafı'),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Palette.soil, fontSize: 20, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Bloklar yerleştikçe resim tahtada ortaya çıkar.',
+              Text(
+                tx('Bloklar yerleştikçe resim tahtada ortaya çıkar.'),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Palette.soilLight, fontSize: 14),
               ),
@@ -85,7 +87,7 @@ class _BoardPictureSheetState extends State<_BoardPictureSheet> {
                               if (ok && context.mounted) Navigator.pop(context);
                             }),
                       icon: const Icon(Icons.photo_library_rounded),
-                      label: const Text('Galeriden seç'),
+                      label: Text(tx('Galeriden seç')),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -94,22 +96,22 @@ class _BoardPictureSheetState extends State<_BoardPictureSheet> {
                       style: OutlinedButton.styleFrom(foregroundColor: Palette.soil, padding: const EdgeInsets.all(14)),
                       onPressed: _busy || !hasPicture ? null : () => _run(PhotoStore.clear),
                       icon: const Icon(Icons.restart_alt_rounded),
-                      label: const Text('Sıfırla'),
+                      label: Text(tx('Sıfırla')),
                     ),
                   ),
                 ],
               ),
               if (PhotoStore.isGallery) ...[
                 const SizedBox(height: 8),
-                const Text(
-                  'Şu an kendi fotoğrafın kullanılıyor.',
+                Text(
+                  tx('Şu an kendi fotoğrafın kullanılıyor.'),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Palette.soilLight, fontSize: 13),
                 ),
               ],
               const SizedBox(height: 16),
-              const Text(
-                'Hazır resimler',
+              Text(
+                tx('Hazır resimler'),
                 style: TextStyle(color: Palette.soil, fontSize: 15, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
@@ -134,7 +136,7 @@ class _BoardPictureSheetState extends State<_BoardPictureSheet> {
     return Semantics(
       button: true,
       selected: selected,
-      label: sceneNames[i],
+      label: tx(sceneNames[i]),
       child: GestureDetector(
         onTap: _busy
             ? null
@@ -159,7 +161,7 @@ class _BoardPictureSheetState extends State<_BoardPictureSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              sceneNames[i],
+              tx(sceneNames[i]),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
