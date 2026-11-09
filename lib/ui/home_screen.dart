@@ -6,6 +6,7 @@ import 'game_screen.dart';
 import 'painters.dart';
 import 'board_picture_sheet.dart';
 import 'palette.dart';
+import 'privacy_screen.dart';
 import 'skins.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -63,7 +64,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.pop(ctx);
                 },
               ),
-              const ListTile(title: Text('Gizlilik politikası'), subtitle: Text('Mağaza sürümünde eklenecek')),
+              ListTile(
+                title: const Text('Gizlilik politikası'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyScreen()));
+                },
+              ),
+              const ListTile(title: Text('Destek'), subtitle: Text('avburakgultekin@icloud.com')),
               const SizedBox(height: 8),
             ],
           ),

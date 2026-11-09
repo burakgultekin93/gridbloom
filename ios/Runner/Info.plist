@@ -15,6 +15,14 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>Blazegrid</string>
+	<key>CFBundleDisplayName</key>
+	<string>Blazegrid</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleLightContent</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -55,8 +63,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
@@ -66,6 +72,6 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Blokların üzerinde kendi fotoğrafını kullanmak için galerine erişim gerekiyor.</string>
+	<string>Tahtaya kendi fotoğrafını koymak için seçtiğin fotoğrafa erişim gerekiyor. Fotoğraf cihazından çıkmaz.</string>
 </dict>
 </plist>
