@@ -1,4 +1,4 @@
-# Gridbloom
+# Blazegrid
 
 A calm block puzzle for iOS and Android, built with Flutter. Place pieces on an 8x8 garden; full rows and columns bloom into flowers and clear.
 
