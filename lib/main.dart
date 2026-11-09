@@ -11,16 +11,16 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await Storage.init();
   await PhotoStore.load();
-  runApp(const GridbloomApp());
+  runApp(const BlazegridApp());
 }
 
-class GridbloomApp extends StatelessWidget {
-  const GridbloomApp({super.key});
+class BlazegridApp extends StatelessWidget {
+  const BlazegridApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Gridbloom',
+      title: 'Blazegrid',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Palette.leaf, surface: Palette.background),

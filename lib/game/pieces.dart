@@ -1,4 +1,4 @@
-/// Piece definitions for Gridbloom.
+/// Piece definitions for Blazegrid.
 ///
 /// Pieces cannot be rotated in play, so every orientation is its own shape.
 library;

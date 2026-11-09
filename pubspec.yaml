@@ -1,5 +1,5 @@
-name: gridbloom
-description: "Gridbloom - a calm block puzzle game."
+name: blazegrid
+description: "Blazegrid - a block puzzle that heats up."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -101,7 +101,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: assets/icon/icon.png
-  adaptive_icon_background: "#FBE7C6"
+  adaptive_icon_background: "#1C2448"
   adaptive_icon_foreground: assets/icon/icon_foreground.png
   remove_alpha_ios: true
   web:

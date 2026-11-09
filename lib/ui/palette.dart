@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Garden palette for Gridbloom.
+/// Garden palette for Blazegrid.
 class Palette {
   static const background = Color(0xFFF6F1E7);
   static const board = Color(0xFFE6DCC6);

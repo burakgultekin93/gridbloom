@@ -76,96 +76,113 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final hasSave = Storage.hasSavedGame;
     return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned(
-              right: 8,
-              top: 8,
-              child: IconButton(
-                onPressed: _settings,
-                icon: const Icon(Icons.settings_rounded, color: Palette.soil, size: 28),
-                tooltip: 'Ayarlar',
-              ),
-            ),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(width: 120, height: 120, child: CustomPaint(painter: LogoPainter())),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Gridbloom',
-                      style: TextStyle(
-                        color: Palette.soil,
-                        fontSize: 44,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1,
-                      ),
-                    ),
-                    const Text(
-                      'Blokları yerleştir, bahçeyi çiçeklendir',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Palette.soilLight, fontSize: 16),
-                    ),
-                    const SizedBox(height: 36),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: Palette.leaf, padding: const EdgeInsets.all(18)),
-                        onPressed: () => _open(resume: hasSave),
-                        child: Text(
-                          hasSave ? 'Klasik mod · Devam et' : 'Klasik mod',
-                          style: const TextStyle(fontSize: 20),
-                        ),
-                      ),
-                    ),
-                    if (hasSave)
-                      TextButton(
-                        onPressed: () {
-                          Storage.clearSavedGame();
-                          _open(resume: false);
-                        },
-                        child: const Text('Yeni oyun', style: TextStyle(color: Palette.soil)),
-                      ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () async {
-                            await showBoardPictureSheet(context);
-                            if (mounted) setState(() {});
-                          },
-                          icon: const Icon(Icons.wallpaper_rounded, color: Palette.leaf),
-                          label: Text(
-                            'Tahta fotoğrafı: ${boardPictureLabel()}',
-                            style: const TextStyle(color: Palette.soil),
-                          ),
-                        ),
-                        if (PhotoStore.image.value != null)
-                          TextButton.icon(
-                            onPressed: () async {
-                              await PhotoStore.clear();
-                              if (mounted) setState(() {});
-                            },
-                            icon: const Icon(Icons.restart_alt_rounded, color: Palette.soilLight),
-                            label: const Text('Sıfırla', style: TextStyle(color: Palette.soilLight)),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    _patternPicker(),
-                    const SizedBox(height: 16),
-                    Text('Rekor: ${Storage.best}', style: const TextStyle(color: Palette.soilLight, fontSize: 16)),
-                  ],
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFDDEEF8), Color(0xFFF6F1E7), Color(0xFFFFE2C2)],
+          ),
+        ),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Positioned(
+                right: 8,
+                top: 8,
+                child: IconButton(
+                  onPressed: _settings,
+                  icon: const Icon(Icons.settings_rounded, color: Palette.soil, size: 28),
+                  tooltip: 'Ayarlar',
                 ),
               ),
-            ),
-          ],
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(width: 120, height: 120, child: CustomPaint(painter: LogoPainter())),
+                      const SizedBox(height: 20),
+                      ShaderMask(
+                        shaderCallback: (r) => const LinearGradient(
+                          colors: [Color(0xFF3E8FE0), Color(0xFF8B5CF0), Color(0xFFFF6A2A), Color(0xFFD7301F)],
+                        ).createShader(r),
+                        child: const Text(
+                          'Blazegrid',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 48,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -1,
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        'Buzdan başla, seriyle alevlen',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Palette.soilLight, fontSize: 16),
+                      ),
+                      const SizedBox(height: 36),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFF0642C),
+                            padding: const EdgeInsets.all(18),
+                          ),
+                          onPressed: () => _open(resume: hasSave),
+                          child: Text(
+                            hasSave ? 'Klasik mod · Devam et' : 'Klasik mod',
+                            style: const TextStyle(fontSize: 20),
+                          ),
+                        ),
+                      ),
+                      if (hasSave)
+                        TextButton(
+                          onPressed: () {
+                            Storage.clearSavedGame();
+                            _open(resume: false);
+                          },
+                          child: const Text('Yeni oyun', style: TextStyle(color: Palette.soil)),
+                        ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () async {
+                              await showBoardPictureSheet(context);
+                              if (mounted) setState(() {});
+                            },
+                            icon: const Icon(Icons.wallpaper_rounded, color: Palette.leaf),
+                            label: Text(
+                              'Tahta fotoğrafı: ${boardPictureLabel()}',
+                              style: const TextStyle(color: Palette.soil),
+                            ),
+                          ),
+                          if (PhotoStore.image.value != null)
+                            TextButton.icon(
+                              onPressed: () async {
+                                await PhotoStore.clear();
+                                if (mounted) setState(() {});
+                              },
+                              icon: const Icon(Icons.restart_alt_rounded, color: Palette.soilLight),
+                              label: const Text('Sıfırla', style: TextStyle(color: Palette.soilLight)),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _patternPicker(),
+                      const SizedBox(height: 16),
+                      Text('Rekor: ${Storage.best}', style: const TextStyle(color: Palette.soilLight, fontSize: 16)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

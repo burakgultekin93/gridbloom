@@ -1,4 +1,4 @@
-package com.gridbloom.gridbloom
+package com.burakgultekin.blazegrid
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -9,6 +9,7 @@ import '../game/game_state.dart';
 import '../services/monetization.dart';
 import '../services/photo_store.dart';
 import '../services/storage.dart';
+import 'bursts.dart';
 import 'effects.dart';
 import 'painters.dart';
 import 'palette.dart';
@@ -168,6 +169,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     for (final col in r.clearedCols) {
       _fx.beams.add(LineBeam(false, col, now));
     }
+    _explode(r, now);
     if (r.clearedCells.isNotEmpty) {
       final start = DateTime.now();
       for (final (row, col, color) in r.clearedCells) {
@@ -204,6 +206,40 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       });
     } else {
       Storage.saveGame(game);
+    }
+  }
+
+  /// Ice explosions while the streak is cold, fire once it heats up.
+  /// A full board clear sets off both at once.
+  void _explode(MoveResult r, DateTime now) {
+    if (r.linesCleared == 0) return;
+    final kind = game.heat >= 0.34 ? BurstKind.fire : BurstKind.ice;
+    final rnd = Random();
+    final big = r.linesCleared >= 2;
+    for (final (row, col, _) in r.clearedCells) {
+      final delay = Duration(milliseconds: ((row + col) % 5) * 35);
+      _fx.bursts.add(Burst(Offset(col + 0.5, row + 0.5), kind, big ? 0.9 : 0.6, now.add(delay), rnd.nextInt(1 << 30)));
+    }
+    for (final row in r.clearedRows) {
+      _fx.bursts.add(
+        Burst(Offset(boardSize / 2, row + 0.5), kind, 1.6 + 0.4 * r.linesCleared, now, rnd.nextInt(1 << 30)),
+      );
+    }
+    for (final col in r.clearedCols) {
+      _fx.bursts.add(
+        Burst(Offset(col + 0.5, boardSize / 2), kind, 1.6 + 0.4 * r.linesCleared, now, rnd.nextInt(1 << 30)),
+      );
+    }
+    const mid = Offset(boardSize / 2, boardSize / 2);
+    if (r.boardCleared) {
+      _fx.bursts.add(Burst(mid, BurstKind.ice, 5, now, rnd.nextInt(1 << 30)));
+      _fx.bursts.add(Burst(mid, BurstKind.fire, 6, now.add(const Duration(milliseconds: 180)), rnd.nextInt(1 << 30)));
+      _fx.shake(now, 0.35);
+    } else if (r.linesCleared >= 3) {
+      _fx.bursts.add(Burst(mid, kind, 3.5, now.add(const Duration(milliseconds: 90)), rnd.nextInt(1 << 30)));
+      _fx.shake(now, 0.22);
+    } else if (big) {
+      _fx.shake(now, 0.12);
     }
   }
 
@@ -247,7 +283,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
   Future<void> _showTutorial() async {
     const steps = [
-      ('Parçayı sürükle', 'Alttaki 3 parçadan birini tut ve bahçeye sürükle. Parçalar döndürülemez.'),
+      ('Parçayı sürükle', 'Alttaki 3 parçadan birini tut ve tahtaya sürükle. Parçalar döndürülemez.'),
       ('Çizgiyi doldur', 'Bir satır ya da sütun tamamen dolunca çiçek açarak temizlenir.'),
       ('Seriyi sürdür', 'Aynı anda birden fazla çizgi temizle ve art arda temizleyerek puanını katla.'),
     ];
@@ -351,25 +387,28 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                           _heatMeter(shownHeat),
                           const Spacer(),
                           Center(
-                            child: SizedBox(
-                              key: _boardKey,
-                              width: boardSide,
-                              height: boardSide,
-                              child: CustomPaint(
-                                painter: BoardPainter(
-                                  game: game,
-                                  ghost: _ghostValid ? dragging?.shape : null,
-                                  ghostRow: _ghostRow,
-                                  ghostCol: _ghostCol,
-                                  ghostColor: dragging?.color ?? 0,
-                                  clearRows: _clearRows,
-                                  clearCols: _clearCols,
-                                  blooms: _blooms,
-                                  now: _now,
-                                  skin: skins[game.skin],
-                                  photo: PhotoStore.image.value,
-                                  fx: _fx,
-                                  pattern: BlockPattern.values[Storage.pattern],
+                            child: Transform.translate(
+                              offset: _fx.shakeOffset(_now) * cell,
+                              child: SizedBox(
+                                key: _boardKey,
+                                width: boardSide,
+                                height: boardSide,
+                                child: CustomPaint(
+                                  painter: BoardPainter(
+                                    game: game,
+                                    ghost: _ghostValid ? dragging?.shape : null,
+                                    ghostRow: _ghostRow,
+                                    ghostCol: _ghostCol,
+                                    ghostColor: dragging?.color ?? 0,
+                                    clearRows: _clearRows,
+                                    clearCols: _clearCols,
+                                    blooms: _blooms,
+                                    now: _now,
+                                    skin: skins[game.skin],
+                                    photo: PhotoStore.image.value,
+                                    fx: _fx,
+                                    pattern: BlockPattern.values[Storage.pattern],
+                                  ),
                                 ),
                               ),
                             ),

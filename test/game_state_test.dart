@@ -1,8 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gridbloom/game/game_state.dart';
-import 'package:gridbloom/game/pieces.dart';
+import 'package:blazegrid/game/game_state.dart';
+import 'package:blazegrid/game/pieces.dart';
 
 void main() {
   test('new game has 3 pieces and an empty board', () {

@@ -17,7 +17,7 @@ class Skin {
 
 const skins = <Skin>[
   Skin(
-    'Bahçe',
+    'Karo',
     SkinShape.tile,
     [Color(0xFF7CC47A), Color(0xFFE07B4F), Color(0xFFF4B740), Color(0xFFA98BE0), Color(0xFFEC7F9A), Color(0xFF5EAEE0)],
     Color(0xFFE6DCC6),

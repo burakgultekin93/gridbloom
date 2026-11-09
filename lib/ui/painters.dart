@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../game/game_state.dart';
 import '../game/pieces.dart';
+import 'bursts.dart';
 import 'palette.dart';
 import 'skins.dart';
 
@@ -112,21 +113,45 @@ class LineBeam {
 class BoardFx {
   final List<PlaceFlash> flashes = [];
   final List<LineBeam> beams = [];
+  final List<Burst> bursts = [];
   DateTime? glint; // a diagonal shine across all blocks
   static const glintDuration = Duration(milliseconds: 750);
 
-  bool get busy => flashes.isNotEmpty || beams.isNotEmpty || glint != null;
+  /// Board shake after big explosions.
+  DateTime? shakeStart;
+  double shakePower = 0;
+  static const shakeDuration = Duration(milliseconds: 420);
+
+  bool get busy => flashes.isNotEmpty || beams.isNotEmpty || bursts.isNotEmpty || glint != null;
+
+  void shake(DateTime now, double power) {
+    shakeStart = now;
+    shakePower = power;
+  }
+
+  /// Offset to move the board by for the shake, in cells.
+  Offset shakeOffset(DateTime now) {
+    final s = shakeStart;
+    if (s == null) return Offset.zero;
+    final t = now.difference(s).inMicroseconds / shakeDuration.inMicroseconds;
+    if (t >= 1) return Offset.zero;
+    final k = shakePower * (1 - t) * (1 - t);
+    return Offset(sin(t * 70) * k, cos(t * 55) * k * 0.7);
+  }
 
   void prune(DateTime now) {
     flashes.removeWhere((f) => now.difference(f.start) > PlaceFlash.duration);
     beams.removeWhere((b) => now.difference(b.start) > LineBeam.duration);
+    bursts.removeWhere((b) => now.difference(b.start) > b.duration);
     if (glint != null && now.difference(glint!) > glintDuration) glint = null;
   }
 
   void clear() {
     flashes.clear();
     beams.clear();
+    bursts.clear();
     glint = null;
+    shakeStart = null;
   }
 }
 
@@ -323,6 +348,8 @@ class BoardPainter extends CustomPainter {
       if (t < 0 || t > 1) continue;
       _paintBloom(canvas, rectAt(b.r, b.c), b.color, t, b.heat);
     }
+
+    paintBursts(canvas, cell, fx.bursts, now);
   }
 
   void _paintBloom(Canvas canvas, Rect rect, int color, double t, double heat) {
@@ -425,24 +452,74 @@ class PiecePainter extends CustomPainter {
       old.pattern != pattern;
 }
 
-/// The logo flower used on the home screen.
+/// The Blazegrid logo: a 3x3 block grid that runs from ice (top left) to
+/// fire (bottom right), with a flame bursting out of the centre.
 class LogoPainter extends CustomPainter {
+  static const _ramp = [
+    Color(0xFF7FD3FF),
+    Color(0xFF4FA8F0),
+    Color(0xFF8B7CF0),
+    Color(0xFFFF9A3D),
+    Color(0xFFFF6A2A),
+    Color(0xFFE0301E),
+  ];
+
   @override
   void paint(Canvas canvas, Size size) {
     final cell = size.width / 3;
-    final colors = [0, 2, 4, 3, 1, 5, 4, 0, 2];
     for (var i = 0; i < 9; i++) {
       if (i == 4) continue;
-      paintBlock(canvas, Rect.fromLTWH((i % 3) * cell, (i ~/ 3) * cell, cell, cell), Palette.blocks[colors[i]]);
+      final r = i ~/ 3, c = i % 3;
+      final color = _ramp[const [0, 1, 2, 4, 5][r + c]]; // ice at top left, fire at bottom right
+      paintBlock(canvas, Rect.fromLTWH(c * cell, r * cell, cell, cell), color);
     }
-    final center = Offset(size.width / 2, size.height / 2);
-    for (var i = 0; i < 5; i++) {
-      final a = i * 2 * pi / 5 - pi / 2;
-      canvas.drawCircle(center + Offset(cos(a), sin(a)) * cell * 0.28, cell * 0.22, Paint()..color = Palette.petals[1]);
-    }
-    canvas.drawCircle(center, cell * 0.18, Paint()..color = Palette.blocks[2]);
+    paintLogoFlame(canvas, Offset(size.width / 2, size.height / 2), cell * 1.2);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// A flame with an icy core, drawn centred on [c] inside a cell of size [cell].
+void paintLogoFlame(Canvas canvas, Offset c, double cell) {
+  canvas.drawCircle(
+    c,
+    cell * 0.62,
+    Paint()
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, cell * 0.22)
+      ..color = const Color(0xFFFF8A2A).withValues(alpha: 0.75),
+  );
+  Path flame(double w, double h) {
+    final base = c + Offset(0, cell * 0.36);
+    return Path()
+      ..moveTo(base.dx, base.dy)
+      ..cubicTo(
+        base.dx - w * 1.1,
+        base.dy - h * 0.05,
+        base.dx - w * 0.9,
+        base.dy - h * 0.62,
+        base.dx - w * 0.15,
+        base.dy - h * 0.78,
+      )
+      ..quadraticBezierTo(base.dx - w * 0.05, base.dy - h * 0.5, base.dx + w * 0.2, base.dy - h * 0.42)
+      ..quadraticBezierTo(base.dx + w * 0.35, base.dy - h * 0.85, base.dx + w * 0.05, base.dy - h)
+      ..cubicTo(base.dx + w * 1.0, base.dy - h * 0.7, base.dx + w * 1.15, base.dy - h * 0.1, base.dx, base.dy)
+      ..close();
+  }
+
+  canvas.drawPath(flame(cell * 0.46, cell * 0.95), Paint()..color = const Color(0xFFE0301E));
+  canvas.drawPath(flame(cell * 0.36, cell * 0.76), Paint()..color = const Color(0xFFFF7A1A));
+  canvas.drawPath(flame(cell * 0.24, cell * 0.52), Paint()..color = const Color(0xFFFFC23D));
+  // Icy core: a small white-blue diamond.
+  final core = c + Offset(0, cell * 0.18);
+  final d = cell * 0.1;
+  canvas.drawPath(
+    Path()
+      ..moveTo(core.dx, core.dy - d * 1.5)
+      ..lineTo(core.dx + d, core.dy)
+      ..lineTo(core.dx, core.dy + d * 1.2)
+      ..lineTo(core.dx - d, core.dy)
+      ..close(),
+    Paint()..color = const Color(0xFFE6F8FF),
+  );
 }
