@@ -32,7 +32,7 @@ class Sound {
       }
       await _music.setReleaseMode(ReleaseMode.loop);
       await _music.setVolume(0.35);
-      await _music.setSource(AssetSource('sounds/music.m4a'));
+      await _music.setSource(AssetSource('sounds/music.mp3'));
       _ready = true;
     } catch (e) {
       // Audio is a nice-to-have: the game runs silently if it fails.

@@ -205,11 +205,11 @@ def main():
     save("goal.wav", goal(), 0.6)
     save("gameover.wav", gameover(), 0.6)
     save("music.wav", music(), 0.45)
-    # Music is long, so ship it as AAC (needs ffmpeg); effects stay WAV for low latency.
+    # Music is long, so ship it as MP3 (needs ffmpeg); effects stay WAV for low latency.
     if shutil.which("ffmpeg"):
         src = os.path.join(OUT, "music.wav")
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-c:a", "aac", "-b:a", "96k",
-                        os.path.join(OUT, "music.m4a")], check=True)
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-c:a", "libmp3lame", "-b:a", "96k",
+                        os.path.join(OUT, "music.mp3")], check=True)
         os.remove(src)
 
 
