@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'game_config.dart';
 import 'pieces.dart';
 
 const int boardSize = 8;
@@ -92,10 +93,15 @@ class GameState {
   final List<Goal> goals;
   final Set<Goal> goalsDone;
   int linesTotal;
+
+  /// Tuning values for this game. Fixed when the game starts, so a Remote
+  /// Config update never changes the rules in the middle of a game.
+  final GameConfig config;
   final Random _rng;
 
-  GameState({Random? rng, this.best = 0})
-    : board = List.generate(boardSize, (_) => List.filled(boardSize, -1)),
+  GameState({Random? rng, this.best = 0, GameConfig? config})
+    : config = config ?? GameConfig.current,
+      board = List.generate(boardSize, (_) => List.filled(boardSize, -1)),
       tray = [null, null, null],
       score = 0,
       streak = 0,
@@ -259,33 +265,25 @@ class GameState {
   /// How much quiet help the next tray gets, 0 (none) to 1 (a lot).
   /// The player never sees this: pieces still look random.
   double get assist {
+    final k = config;
+    if (!k.assistEnabled) return 0;
     var a = 0.0;
     // Warm-up: the first stretch of every game is gentle.
-    if (score < 800) a = 1.0 - score / 800 * 0.5;
+    if (score < k.warmupScore) a = k.assistWarmup * (1.0 - score / k.warmupScore * 0.5);
     // Rescue when the board is getting crowded.
-    if (fill > 0.65) a = max(a, ((fill - 0.65) / 0.2).clamp(0.0, 1.0) * 0.8);
+    if (fill > k.rescueFill) a = max(a, ((fill - k.rescueFill) / 0.2).clamp(0.0, 1.0) * k.assistRescue);
     // Record chase: close to the record, but only for reachable records.
-    if (best > 0 && best < 20000 && score >= best * 0.8 && score <= best * 1.05) a = max(a, 0.6);
+    if (best > 0 && best < k.recordAssistMaxBest && score >= best * 0.8 && score <= best * 1.05) {
+      a = max(a, k.assistRecord);
+    }
     return a;
   }
 
-  int _weight(PieceShape s) {
-    final rescue = fill > 0.65;
-    switch (s.size) {
-      case PieceSize.small:
-        return rescue ? 12 : 6;
-      case PieceSize.medium:
-        return 4;
-      case PieceSize.large:
-        if (score < 800) return 0; // none during warm-up
-        if (rescue) return 1;
-        if (score < 3000) return 1 + score ~/ 1500; // 1..2
-        return 3 + min((score - 3000) ~/ 2000, 3); // 3..6, gets harder
-    }
-  }
+  int _weight(PieceShape s) => config.pieceWeight(s, score, rescue: fill > config.rescueFill);
 
   PieceShape _randomShape() {
     final total = allPieces.fold<int>(0, (a, s) => a + _weight(s));
+    if (total <= 0) return allPieces[_rng.nextInt(allPieces.length)];
     var roll = _rng.nextInt(total);
     for (final s in allPieces) {
       roll -= _weight(s);
@@ -390,7 +388,7 @@ class GameState {
   void _refillTray() {
     final a = assist;
     // More help means more candidate trays to choose the kindest from.
-    final candidates = 1 + (a * 8).round() + (score < 3000 ? 2 : 0);
+    final candidates = 1 + (a * config.assistExtraTrays).round() + (score < config.hardScore ? 2 : 0);
     List<PieceShape>? pick;
     var pickScore = -1.0;
     for (var k = 0; k < candidates; k++) {
