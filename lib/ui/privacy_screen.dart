@@ -12,8 +12,11 @@ class PrivacyScreen extends StatelessWidget {
     ('Veri sorumlusu', 'Burak Gültekin. İletişim: avburakgultekin@icloud.com'),
     (
       'Topladığımız veriler',
-      'Oyunun bu sürümü hiçbir kişisel veriyi toplamaz, sunucuya göndermez ve üçüncü kişilerle '
-          'paylaşmaz. Hesap açma, giriş yapma veya kayıt olma yoktur.\n\n'
+      'Hesap açma, giriş yapma veya kayıt olma yoktur. Oyun adını, e-postanı ya da konumunu toplamaz.\n\n'
+          'Oyun, zorluk gibi oyun ayarlarını güncel tutmak için Google Firebase Remote Config hizmetine '
+          'bağlanır. Bu sırada Google, rastgele bir kurulum kimliğini ve uygulama sürümü, işletim sistemi, '
+          'dil ve ülke gibi teknik bilgileri işler. Bu bilgiler seni tanımak, reklam ya da takip için '
+          'kullanılmaz ve başka kimseyle paylaşılmaz.\n\n'
           'En yüksek skorun, yarım kalan oyunun, ayarların ve tahta için seçtiğin fotoğraf yalnızca '
           'cihazında saklanır. Fotoğraf küçültülür, hiçbir yere yüklenmez ve "Sıfırla" ile silinebilir. '
           'Oyunu sildiğinde bu bilgilerin tamamı cihazından silinir.',
@@ -39,8 +42,11 @@ class PrivacyScreen extends StatelessWidget {
     ('Data controller', 'Burak Gültekin. Contact: avburakgultekin@icloud.com'),
     (
       'Data we collect',
-      'This version of the game collects no personal data, sends nothing to a server and shares '
-          'nothing with third parties. There is no account, sign-in or registration.\n\n'
+      'There is no account, sign-in or registration. The game does not collect your name, email or location.\n\n'
+          'To keep game settings such as difficulty up to date, the game connects to Google Firebase '
+          'Remote Config. Google processes a random installation ID and technical details such as app '
+          'version, operating system, language and country. This is not used to identify you, for ads '
+          'or for tracking, and is not shared with anyone else.\n\n'
           'Your best score, unfinished game, settings and the photo you pick for the board are stored '
           'only on your device. The photo is scaled down, never uploaded, and can be removed with "Reset". '
           'Deleting the game deletes all of this from your device.',
