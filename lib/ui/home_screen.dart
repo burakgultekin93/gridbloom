@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../game/game_state.dart';
 import '../l10n.dart';
 
 import '../services/photo_store.dart';
@@ -20,10 +21,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Future<void> _open({required bool resume}) async {
+  Future<void> _open(GameMode mode, {required bool resume}) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => GameScreen(resume: resume ? Storage.loadGame() : null)),
+      MaterialPageRoute(
+        builder: (_) => GameScreen(mode: mode, resume: resume ? Storage.loadGame(mode) : null),
+      ),
     );
     setState(() {});
   }
@@ -164,7 +167,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasSave = Storage.hasSavedGame;
+    final hasSave = Storage.hasSavedGame(GameMode.classic);
+    final hasHeatSave = Storage.hasSavedGame(GameMode.heat);
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(
@@ -222,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.all(18),
                           ),
-                          onPressed: () => _open(resume: hasSave),
+                          onPressed: () => _open(GameMode.classic, resume: hasSave),
                           child: Text(
                             hasSave ? tx('Klasik mod · Devam et') : tx('Klasik mod'),
                             style: const TextStyle(fontSize: 20),
@@ -232,8 +236,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (hasSave)
                         TextButton(
                           onPressed: () {
-                            Storage.clearSavedGame();
-                            _open(resume: false);
+                            Storage.clearSavedGame(GameMode.classic);
+                            _open(GameMode.classic, resume: false);
+                          },
+                          child: Text(tx('Yeni oyun'), style: TextStyle(color: Palette.soil)),
+                        ),
+                      const SizedBox(height: 12),
+                      _heatButton(hasHeatSave),
+                      if (hasHeatSave)
+                        TextButton(
+                          onPressed: () {
+                            Storage.clearSavedGame(GameMode.heat);
+                            _open(GameMode.heat, resume: false);
                           },
                           child: Text(tx('Yeni oyun'), style: TextStyle(color: Palette.soil)),
                         ),
@@ -268,11 +282,62 @@ class _HomeScreenState extends State<HomeScreen> {
                       _patternPicker(),
                       const SizedBox(height: 16),
                       Text(
-                        '${tx('Rekor')}: ${Storage.best}',
-                        style: const TextStyle(color: Palette.soilLight, fontSize: 16),
+                        '${tx('Klasik rekor')}: ${Storage.best}  ·  ${tx('Isı rekoru')}: ${Storage.bestFor(GameMode.heat)}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Palette.soilLight, fontSize: 15),
                       ),
                     ],
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Heat mode button: ice to fire gradient, with a "new" badge.
+  Widget _heatButton(bool hasSave) {
+    return Semantics(
+      button: true,
+      label: tx('Isı modu'),
+      child: GestureDetector(
+        onTap: () => _open(GameMode.heat, resume: hasSave),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(40),
+            gradient: const LinearGradient(colors: [Color(0xFF3F8FE0), Color(0xFF8B5CF0), Color(0xFFFF5A1F)]),
+            boxShadow: const [BoxShadow(color: Color(0x66FF5A1F), blurRadius: 18, offset: Offset(0, 4))],
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.ac_unit_rounded, color: Colors.white, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      hasSave ? tx('Isı modu · Devam et') : tx('Isı modu'),
+                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      tx('Donmuş hücreler ve yayılan ateş'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                child: Text(
+                  tx('YENİ'),
+                  style: const TextStyle(color: Color(0xFFE0301E), fontSize: 11, fontWeight: FontWeight.w900),
                 ),
               ),
             ],

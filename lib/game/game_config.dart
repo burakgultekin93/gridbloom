@@ -58,6 +58,23 @@ class GameConfig {
   /// How many extra candidate trays full assist looks at.
   final int assistExtraTrays;
 
+  // ---- Heat mode ----
+
+  /// Moves between hazard waves (ice, then fire, then ice...).
+  final int heatWaveEvery;
+
+  /// Moves a burning block waits before the fire jumps to a neighbour.
+  final int heatFuse;
+
+  /// Frozen cells on the board when a heat game starts.
+  final int heatStartIce;
+
+  /// No new fire while this many blocks are already burning.
+  final int heatMaxFires;
+
+  /// No new ice while the board is fuller than this (0..1).
+  final double heatWaveMaxFill;
+
   // ---- Ads (step 4) ----
 
   final bool adsEnabled;
@@ -93,6 +110,11 @@ class GameConfig {
     this.assistRecord = 0.6,
     this.recordAssistMaxBest = 20000,
     this.assistExtraTrays = 8,
+    this.heatWaveEvery = 6,
+    this.heatFuse = 4,
+    this.heatStartIce = 4,
+    this.heatMaxFires = 3,
+    this.heatWaveMaxFill = 0.7,
     this.adsEnabled = false,
     this.rewardedContinueEnabled = false,
     this.interstitialEnabled = false,
@@ -145,6 +167,11 @@ class GameConfig {
   static const kAssistRecord = 'assist_record';
   static const kRecordAssistMaxBest = 'record_assist_max_best';
   static const kAssistExtraTrays = 'assist_extra_trays';
+  static const kHeatWaveEvery = 'heat_wave_every';
+  static const kHeatFuse = 'heat_fuse';
+  static const kHeatStartIce = 'heat_start_ice';
+  static const kHeatMaxFires = 'heat_max_fires';
+  static const kHeatWaveMaxFill = 'heat_wave_max_fill';
   static const kAdsEnabled = 'ads_enabled';
   static const kRewardedContinueEnabled = 'rewarded_continue_enabled';
   static const kInterstitialEnabled = 'interstitial_enabled';
@@ -173,6 +200,11 @@ class GameConfig {
     kAssistRecord: assistRecord,
     kRecordAssistMaxBest: recordAssistMaxBest,
     kAssistExtraTrays: assistExtraTrays,
+    kHeatWaveEvery: heatWaveEvery,
+    kHeatFuse: heatFuse,
+    kHeatStartIce: heatStartIce,
+    kHeatMaxFires: heatMaxFires,
+    kHeatWaveMaxFill: heatWaveMaxFill,
     kAdsEnabled: adsEnabled,
     kRewardedContinueEnabled: rewardedContinueEnabled,
     kInterstitialEnabled: interstitialEnabled,
@@ -225,6 +257,11 @@ class GameConfig {
       assistRecord: f(kAssistRecord, d.assistRecord, 0, 1),
       recordAssistMaxBest: i(kRecordAssistMaxBest, d.recordAssistMaxBest, 0, 10000000),
       assistExtraTrays: i(kAssistExtraTrays, d.assistExtraTrays, 0, 20),
+      heatWaveEvery: i(kHeatWaveEvery, d.heatWaveEvery, 2, 50),
+      heatFuse: i(kHeatFuse, d.heatFuse, 1, 20),
+      heatStartIce: i(kHeatStartIce, d.heatStartIce, 0, 8),
+      heatMaxFires: i(kHeatMaxFires, d.heatMaxFires, 1, 10),
+      heatWaveMaxFill: f(kHeatWaveMaxFill, d.heatWaveMaxFill, 0.2, 1.0),
       adsEnabled: b(kAdsEnabled, d.adsEnabled),
       rewardedContinueEnabled: b(kRewardedContinueEnabled, d.rewardedContinueEnabled),
       interstitialEnabled: b(kInterstitialEnabled, d.interstitialEnabled),
