@@ -75,6 +75,16 @@ Yeni değerler **bir sonraki oyunda** geçerli olur; oynanan oyun yarıda deği�
 
 Parça adları `lib/game/pieces.dart` dosyasında (`dot`, `i2h`, `o2`, `o3`, `i5h`, `bl_a` ...).
 
+### Isı modu
+
+| Anahtar | Varsayılan | Ne işe yarar |
+|---|---|---|
+| `heat_wave_every` | 6 | Kaç hamlede bir tehlike dalgası gelir (sırayla buz, ateş) |
+| `heat_fuse` | 4 | Yanan blok kaç hamle sonra komşusuna sıçrar |
+| `heat_start_ice` | 4 | Oyun başında tahtadaki donmuş hücre sayısı |
+| `heat_max_fires` | 3 | Bu kadar blok yanarken yeni ateş gelmez |
+| `heat_wave_max_fill` | 0.7 | Tahta bundan doluysa yeni buz gelmez |
+
 ### Reklamlar (adım 4, şimdilik hepsi kapalı)
 
 | Anahtar | Varsayılan | Ne işe yarar |

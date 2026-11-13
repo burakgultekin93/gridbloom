@@ -126,6 +126,29 @@ const _en = <String, String>{
   'Harika!': 'Great!',
   'Süper!': 'Super!',
   'Güzel!': 'Nice!',
+  // Heat mode.
+  'Isı modu': 'Heat mode',
+  'Isı modu · Devam et': 'Heat mode · Continue',
+  'Donmuş hücreler ve yayılan ateş': 'Frozen cells and spreading fire',
+  'YENİ': 'NEW',
+  'ISI': 'HEAT',
+  'söndü': 'put out',
+  'Buz eridi!': 'Meltdown!',
+  'Yangın söndü!': 'Fire out!',
+  'Söndürüldü!': 'Doused!',
+  'Buz çözüldü!': 'Ice broken!',
+  'Çizgileri doldurup patlat. Ama bu tahtada buz ve ateş de var.':
+      'Fill lines to blast them. But this board has ice and fire too.',
+  'Donmuş hücre': 'Frozen cell',
+  'Buzun üstüne parça konmaz. Yanındaki ya da içindeki çizgi patlayınca çatlar ve erir.':
+      'You cannot place on ice. It cracks and melts when a line through it or next to it clears.',
+  'Yanan blok': 'Burning block',
+  'Sayaç bitince ateş yan hücreye sıçrar ve tahtayı doldurur. Bloğun çizgisini patlatıp söndür.':
+      'When its counter runs out, the fire jumps to the next cell and fills your board. Clear its line to put it out.',
+  'Isıyı kullan': 'Use the heat',
+  '4 hamle üst üste çizgi patlatırsan seri kızışır ve dokunduğun buzlar tek seferde erir. Ateş buza sıçrarsa ikisi de söner.': 'Clear lines 4 moves in a row and your streak gets hot enough to melt ice in one hit. Fire that jumps onto ice dies out with it.',
+  'Klasik rekor': 'Classic best',
+  'Isı rekoru': 'Heat best',
   // Goals.
   "3'lü seri yap": 'Get a 3x streak',
   'Aynı anda 2 çizgi': '2 lines at once',
@@ -133,4 +156,8 @@ const _en = <String, String>{
   '10 çizgi patlat': 'Blast 10 lines',
   'Tek hamlede 100 puan': '100 points in one move',
   "5'li seri yap": 'Get a 5x streak',
+  '5 buz çöz': 'Melt 5 ice',
+  '2 ateş söndür': 'Put out 2 fires',
+  '12 buz çöz': 'Melt 12 ice',
+  '5 ateş söndür': 'Put out 5 fires',
 };

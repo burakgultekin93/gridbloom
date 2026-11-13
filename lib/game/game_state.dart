@@ -8,6 +8,21 @@ const int boardSize = 8;
 /// Number of block looks; the look moves on each time the board is cleared.
 const int skinCount = 4;
 
+/// Board value of a frozen cell (empty cells are -1, blocks are 0..5).
+const int frozenCell = -2;
+
+/// Classic: plain block puzzle. Heat: frozen cells and spreading fire.
+enum GameMode { classic, heat }
+
+/// What happened to one ice cell during a move.
+enum IceHit { cracked, melted }
+
+/// One heat mode event on a cell, for effects.
+class HeatEvent {
+  final int r, c;
+  const HeatEvent(this.r, this.c);
+}
+
 /// A piece waiting in the tray, with its colour index.
 class TrayPiece {
   final PieceShape shape;
@@ -35,6 +50,32 @@ class MoveResult {
 
   /// Mini goals finished by this move; their bonus is included in [points].
   final List<Goal> goalsDone;
+
+  // ---- Heat mode ----
+
+  /// Ice cells hit by this move (a line or a neighbour cleared), and
+  /// whether they only cracked or melted away.
+  final List<(int, int, IceHit)> iceHits;
+
+  /// Burning blocks put out because their line cleared.
+  final List<(int, int)> doused;
+
+  /// Fire that jumped to a new cell this move: (from, to).
+  final List<((int, int), (int, int))> spread;
+
+  /// Fire that ran into ice: both went out in a puff of steam.
+  final List<(int, int)> steam;
+
+  /// The hazard wave that arrived after this move.
+  final List<(int, int)> newIce;
+  final List<(int, int)> ignited;
+
+  /// Bonus points for melting ice and putting out fire (in [points]).
+  final int heatBonus;
+
+  /// Hot streak: ice next to the clear melted in one go.
+  final bool hotMelt;
+
   const MoveResult({
     required this.points,
     required this.linesCleared,
@@ -46,11 +87,21 @@ class MoveResult {
     this.clearedCols = const [],
     this.skinChanged = false,
     this.goalsDone = const [],
+    this.iceHits = const [],
+    this.doused = const [],
+    this.spread = const [],
+    this.steam = const [],
+    this.newIce = const [],
+    this.ignited = const [],
+    this.heatBonus = 0,
+    this.hotMelt = false,
   });
+
+  int get melted => iceHits.where((h) => h.$3 == IceHit.melted).length;
 }
 
 /// Small per-game tasks that give bonus points.
-enum Goal { streak3, double, triple, lines10, bigMove, streak5 }
+enum Goal { streak3, double, triple, lines10, bigMove, streak5, thaw5, douse2, thaw12, douse5 }
 
 const goalText = <Goal, String>{
   Goal.streak3: "3'lü seri yap",
@@ -59,6 +110,10 @@ const goalText = <Goal, String>{
   Goal.lines10: '10 çizgi patlat',
   Goal.bigMove: 'Tek hamlede 100 puan',
   Goal.streak5: "5'li seri yap",
+  Goal.thaw5: '5 buz çöz',
+  Goal.douse2: '2 ateş söndür',
+  Goal.thaw12: '12 buz çöz',
+  Goal.douse5: '5 ateş söndür',
 };
 
 const goalBonus = <Goal, int>{
@@ -68,14 +123,37 @@ const goalBonus = <Goal, int>{
   Goal.lines10: 200,
   Goal.bigMove: 150,
   Goal.streak5: 300,
+  Goal.thaw5: 150,
+  Goal.douse2: 150,
+  Goal.thaw12: 300,
+  Goal.douse5: 300,
 };
+
+/// Points for each ice cell melted and each fire put out in heat mode.
+const int meltPoints = 20;
+const int dousePoints = 30;
 
 /// Pure game rules: board, tray, scoring, piece generation.
 class GameState {
   static const int colorCount = 6;
 
-  /// -1 = empty, otherwise a colour index.
+  /// -1 = empty, [frozenCell] = ice, otherwise a colour index.
   final List<List<int>> board;
+
+  final GameMode mode;
+
+  /// Heat mode: layers of ice on each frozen cell (0 = not frozen).
+  final List<List<int>> ice;
+
+  /// Heat mode: moves left before a burning block spreads (0 = not burning).
+  final List<List<int>> fuse;
+
+  /// Heat mode: moves until the next hazard wave, and how many came so far.
+  /// Waves take turns: ice, fire, ice, fire...
+  int movesToWave;
+  int waves;
+  int thawedTotal;
+  int dousedTotal;
   final List<TrayPiece?> tray;
   int score;
   int streak; // consecutive clearing moves
@@ -99,9 +177,15 @@ class GameState {
   final GameConfig config;
   final Random _rng;
 
-  GameState({Random? rng, this.best = 0, GameConfig? config})
+  GameState({Random? rng, this.best = 0, GameConfig? config, this.mode = GameMode.classic})
     : config = config ?? GameConfig.current,
       board = List.generate(boardSize, (_) => List.filled(boardSize, -1)),
+      ice = List.generate(boardSize, (_) => List.filled(boardSize, 0)),
+      fuse = List.generate(boardSize, (_) => List.filled(boardSize, 0)),
+      movesToWave = 0,
+      waves = 0,
+      thawedTotal = 0,
+      dousedTotal = 0,
       tray = [null, null, null],
       score = 0,
       streak = 0,
@@ -113,13 +197,23 @@ class GameState {
       linesTotal = 0,
       _rng = rng ?? Random() {
     _pickGoals();
+    if (mode == GameMode.heat) {
+      movesToWave = this.config.heatWaveEvery;
+      _seedIce(this.config.heatStartIce);
+    }
     _refillTray();
   }
 
+  bool get isHeat => mode == GameMode.heat;
+
   /// Two easier goals and one hard one.
   void _pickGoals() {
-    final easy = [Goal.double, Goal.streak3, Goal.lines10]..shuffle(_rng);
-    final hard = [Goal.triple, Goal.bigMove, Goal.streak5]..shuffle(_rng);
+    final easy = isHeat
+        ? ([Goal.thaw5, Goal.douse2, Goal.double]..shuffle(_rng))
+        : ([Goal.double, Goal.streak3, Goal.lines10]..shuffle(_rng));
+    final hard = isHeat
+        ? ([Goal.thaw12, Goal.douse5, Goal.streak5]..shuffle(_rng))
+        : ([Goal.triple, Goal.bigMove, Goal.streak5]..shuffle(_rng));
     goals
       ..clear()
       ..addAll([easy[0], easy[1], hard[0]]);
@@ -132,6 +226,28 @@ class GameState {
     final base = min(streak, 6) / 6;
     return (base * (1 - movesSinceClear * 0.25)).clamp(0.0, 1.0);
   }
+
+  /// Frozen cells at the start of a heat game: spread out, one per row and
+  /// column at most, away from the corners so they never trap a corner.
+  void _seedIce(int count) {
+    final rows = List.generate(boardSize, (i) => i)..shuffle(_rng);
+    final cols = List.generate(boardSize, (i) => i)..shuffle(_rng);
+    var placed = 0;
+    for (var i = 0; i < boardSize && placed < count; i++) {
+      final r = rows[i], c = cols[i];
+      if ((r == 0 || r == boardSize - 1) && (c == 0 || c == boardSize - 1)) continue;
+      board[r][c] = frozenCell;
+      ice[r][c] = 1;
+      placed++;
+    }
+  }
+
+  int get burningCount => fuse.fold<int>(0, (n, row) => n + row.where((f) => f > 0).length);
+
+  int get iceCount => ice.fold<int>(0, (n, row) => n + row.where((l) => l > 0).length);
+
+  /// The next hazard wave brings fire (true) or ice (false).
+  bool get nextWaveIsFire => waves.isOdd;
 
   bool canPlace(PieceShape shape, int row, int col) {
     for (final cell in shape.cells) {
@@ -202,8 +318,42 @@ class GameState {
         take(r, c);
       }
     }
+    // Ice in a cleared line is hit, but stays in place until it melts.
+    final iceInLines = [
+      for (final (r, c, v) in cleared)
+        if (v == frozenCell) (r, c),
+    ];
+    cleared.removeWhere((e) => e.$3 == frozenCell);
+    final doused = <(int, int)>[];
     for (final (r, c, _) in cleared) {
       board[r][c] = -1;
+      if (fuse[r][c] > 0) {
+        fuse[r][c] = 0;
+        doused.add((r, c));
+      }
+    }
+
+    // Heat mode: clears crack the ice they touch. On a hot streak (the 4th
+    // clearing move in a row or more) the heat melts it in one go.
+    final iceHits = <(int, int, IceHit)>[];
+    final hotMelt = isHeat && lines > 0 && streak + 1 >= 4;
+    if (isHeat && lines > 0) {
+      final hit = <int>{};
+      void hitIce(int r, int c) {
+        if (r < 0 || c < 0 || r >= boardSize || c >= boardSize) return;
+        if (board[r][c] != frozenCell || !hit.add(r * boardSize + c)) return;
+        iceHits.add((r, c, _crack(r, c, all: hotMelt)));
+      }
+
+      for (final (r, c) in iceInLines) {
+        hitIce(r, c);
+      }
+      for (final (r, c, _) in cleared) {
+        hitIce(r - 1, c);
+        hitIce(r + 1, c);
+        hitIce(r, c - 1);
+        hitIce(r, c + 1);
+      }
     }
 
     var multiplier = 1;
@@ -223,6 +373,31 @@ class GameState {
       if (movesSinceClear >= 3) streak = 0;
     }
     linesTotal += lines;
+
+    // Heat mode: burning blocks tick down and spread, then the next wave.
+    final spread = <((int, int), (int, int))>[];
+    final steam = <(int, int)>[];
+    final newIce = <(int, int)>[];
+    final ignited = <(int, int)>[];
+    if (isHeat) {
+      _burn(spread, steam, iceHits);
+      movesToWave -= 1;
+      if (movesToWave <= 0) {
+        movesToWave = config.heatWaveEvery;
+        if (nextWaveIsFire) {
+          _igniteWave(ignited);
+        } else {
+          _iceWave(newIce);
+        }
+        waves += 1;
+      }
+    }
+    final melted = iceHits.where((h) => h.$3 == IceHit.melted).length;
+    thawedTotal += melted;
+    dousedTotal += doused.length;
+    final heatBonus = melted * meltPoints + doused.length * dousePoints;
+    points += heatBonus;
+
     final done = <Goal>[];
     for (final g in goals) {
       if (goalsDone.contains(g)) continue;
@@ -233,6 +408,10 @@ class GameState {
         Goal.lines10 => linesTotal >= 10,
         Goal.bigMove => points >= 100,
         Goal.streak5 => streak >= 5,
+        Goal.thaw5 => thawedTotal >= 5,
+        Goal.douse2 => dousedTotal >= 2,
+        Goal.thaw12 => thawedTotal >= 12,
+        Goal.douse5 => dousedTotal >= 5,
       };
       if (hit) done.add(g);
     }
@@ -256,7 +435,91 @@ class GameState {
       clearedCols: full.cols,
       skinChanged: boardCleared,
       goalsDone: done,
+      iceHits: iceHits,
+      doused: doused,
+      spread: spread,
+      steam: steam,
+      newIce: newIce,
+      ignited: ignited,
+      heatBonus: heatBonus,
+      hotMelt: hotMelt && iceHits.isNotEmpty,
     );
+  }
+
+  /// Takes one layer (or, with [all], every layer) off the ice at (r, c).
+  IceHit _crack(int r, int c, {bool all = false}) {
+    ice[r][c] = all ? 0 : ice[r][c] - 1;
+    if (ice[r][c] > 0) return IceHit.cracked;
+    ice[r][c] = 0;
+    board[r][c] = -1;
+    return IceHit.melted;
+  }
+
+  /// Every burning block gets one move closer to spreading. When its fuse
+  /// runs out the block burns out (it stays as a plain block) and the fire
+  /// jumps to a neighbour: an empty cell fills with a burning block, a block
+  /// catches fire, and ice meets fire in a puff of steam that ends both.
+  void _burn(List<((int, int), (int, int))> spread, List<(int, int)> steam, List<(int, int, IceHit)> iceHits) {
+    final burning = <(int, int)>[
+      for (var r = 0; r < boardSize; r++)
+        for (var c = 0; c < boardSize; c++)
+          if (fuse[r][c] > 0) (r, c),
+    ];
+    for (final (r, c) in burning) {
+      if (fuse[r][c] <= 0) continue; // put out by steam this move
+      fuse[r][c] -= 1;
+      if (fuse[r][c] > 0) continue;
+      final targets = <(int, int)>[
+        for (final (dr, dc) in const [(-1, 0), (1, 0), (0, -1), (0, 1)])
+          if (r + dr >= 0 && r + dr < boardSize && c + dc >= 0 && c + dc < boardSize && fuse[r + dr][c + dc] == 0)
+            (r + dr, c + dc),
+      ];
+      if (targets.isEmpty) continue; // burns out with nowhere to go
+      final (tr, tc) = targets[_rng.nextInt(targets.length)];
+      final v = board[tr][tc];
+      if (v == frozenCell) {
+        steam.add((tr, tc));
+        iceHits.add((tr, tc, _crack(tr, tc)));
+        continue;
+      }
+      if (v == -1) board[tr][tc] = board[r][c] < 0 ? 0 : board[r][c];
+      fuse[tr][tc] = config.heatFuse;
+      spread.add(((r, c), (tr, tc)));
+    }
+  }
+
+  /// Ice wave: one or two new frozen cells on empty spots. Later in the game
+  /// some of them are thicker (two layers). Skipped on a crowded board.
+  void _iceWave(List<(int, int)> out) {
+    final empty = <(int, int)>[
+      for (var r = 0; r < boardSize; r++)
+        for (var c = 0; c < boardSize; c++)
+          if (board[r][c] == -1) (r, c),
+    ];
+    if (fill > config.heatWaveMaxFill) return;
+    empty.shuffle(_rng);
+    final count = min(empty.length, score >= 2500 ? 2 : 1);
+    for (var i = 0; i < count; i++) {
+      final (r, c) = empty[i];
+      board[r][c] = frozenCell;
+      ice[r][c] = score >= 1500 && _rng.nextDouble() < 0.35 ? 2 : 1;
+      out.add((r, c));
+    }
+  }
+
+  /// Fire wave: a block on the board catches fire. Nothing happens if there
+  /// are no blocks or enough fires already.
+  void _igniteWave(List<(int, int)> out) {
+    if (burningCount >= config.heatMaxFires) return;
+    final blocks = <(int, int)>[
+      for (var r = 0; r < boardSize; r++)
+        for (var c = 0; c < boardSize; c++)
+          if (board[r][c] >= 0 && fuse[r][c] == 0) (r, c),
+    ];
+    if (blocks.isEmpty) return;
+    final (r, c) = blocks[_rng.nextInt(blocks.length)];
+    fuse[r][c] = config.heatFuse;
+    out.add((r, c));
   }
 
   /// Share of the board that is filled, 0..1.
@@ -438,17 +701,35 @@ class GameState {
     'goals': goals.map((g) => g.name).toList(),
     'goalsDone': goalsDone.map((g) => g.name).toList(),
     'linesTotal': linesTotal,
+    'mode': mode.name,
+    if (isHeat) ...{
+      'ice': ice.map((r) => List<int>.from(r)).toList(),
+      'fuse': fuse.map((r) => List<int>.from(r)).toList(),
+      'movesToWave': movesToWave,
+      'waves': waves,
+      'thawed': thawedTotal,
+      'doused': dousedTotal,
+    },
   };
 
   static GameState? fromJson(Map<String, dynamic> j) {
     try {
-      final g = GameState();
+      final mode = GameMode.values.byName(j['mode'] as String? ?? 'classic');
+      final g = GameState(mode: mode);
       final b = (j['board'] as List).map((r) => (r as List).cast<int>()).toList();
+      final ice = (j['ice'] as List?)?.map((r) => (r as List).cast<int>()).toList();
+      final fuse = (j['fuse'] as List?)?.map((r) => (r as List).cast<int>()).toList();
       for (var r = 0; r < boardSize; r++) {
         for (var c = 0; c < boardSize; c++) {
           g.board[r][c] = b[r][c];
+          g.ice[r][c] = ice?[r][c] ?? 0;
+          g.fuse[r][c] = fuse?[r][c] ?? 0;
         }
       }
+      g.movesToWave = j['movesToWave'] as int? ?? g.config.heatWaveEvery;
+      g.waves = j['waves'] as int? ?? 0;
+      g.thawedTotal = j['thawed'] as int? ?? 0;
+      g.dousedTotal = j['doused'] as int? ?? 0;
       final t = j['tray'] as List;
       for (var i = 0; i < 3; i++) {
         final e = t[i];
