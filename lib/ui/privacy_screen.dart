@@ -82,8 +82,8 @@ class PrivacyScreen extends StatelessWidget {
         children: [
           Text(
             pick(
-              'Bu metin, Blazegrid oyununun kişisel verileri nasıl işlediğini KVKK ve GDPR kapsamında açıklar.',
-              'This explains how the Blazegrid game handles personal data under the GDPR and KVKK.',
+              'Bu metin, Thawline oyununun kişisel verileri nasıl işlediğini KVKK ve GDPR kapsamında açıklar.',
+              'This explains how the Thawline game handles personal data under the GDPR and KVKK.',
             ),
             style: const TextStyle(color: Palette.soilLight, fontSize: 15, height: 1.5),
           ),

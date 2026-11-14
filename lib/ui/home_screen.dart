@@ -199,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           colors: [Color(0xFF7FD3FF), Color(0xFFA98BFF), Color(0xFFFF8A3D), Color(0xFFFF4A2A)],
                         ).createShader(r),
                         child: Text(
-                          'Blazegrid',
+                          'Thawline',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 48,

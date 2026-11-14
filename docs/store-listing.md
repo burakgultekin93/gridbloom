@@ -1,11 +1,11 @@
-# Blazegrid store listing
+# Thawline store listing
 
 App Store Connect: primary language English (U.S.), plus a Turkish localization.
 Name and subtitle are searched by Apple, so keywords do not repeat their words.
 
 ## English (U.S.), primary
 
-**Name (30):** Blazegrid: Ice & Fire Puzzle
+**Name (30):** Thawline: Ice & Fire Puzzle
 
 **Subtitle (30):** Melt the ice, stop the fire
 
@@ -13,7 +13,7 @@ Name and subtitle are searched by Apple, so keywords do not repeat their words.
 
 **Description:**
 
-Blazegrid is a strategy puzzle about heat. Frozen cells lock parts of the board and fires spread across it, and the only tools you have are the pieces you place and the lines you complete.
+Thawline is a strategy puzzle about heat. Frozen cells lock parts of the board and fires spread across it, and the only tools you have are the pieces you place and the lines you complete.
 
 HEAT MODE
 - Frozen cells block your moves. Complete a line through or next to them to crack the ice, or build a hot streak to melt it in one go.
@@ -36,7 +36,7 @@ AND MORE
 
 ## Türkçe
 
-**Ad (30):** Blazegrid: Buz ve Ateş
+**Ad (30):** Thawline: Buz ve Ateş
 
 **Alt başlık (30):** Buzu erit, yangını söndür
 
@@ -44,7 +44,7 @@ AND MORE
 
 **Açıklama:**
 
-Blazegrid, ısı üzerine kurulu bir strateji bulmacası. Donmuş hücreler tahtanın bazı yerlerini kilitliyor, ateş tahtada yayılıyor. Elindeki tek araç yerleştirdiğin parçalar ve tamamladığın çizgiler.
+Thawline, ısı üzerine kurulu bir strateji bulmacası. Donmuş hücreler tahtanın bazı yerlerini kilitliyor, ateş tahtada yayılıyor. Elindeki tek araç yerleştirdiğin parçalar ve tamamladığın çizgiler.
 
 ISI MODU
 - Donmuş hücreler hamleni engeller. İçinden ya da yanından geçen bir çizgiyi tamamla, buz çatlasın. Ya da seriyi kızıştır, buzu tek seferde erit.
