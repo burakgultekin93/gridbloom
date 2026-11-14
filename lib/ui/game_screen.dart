@@ -18,6 +18,7 @@ import 'effects.dart';
 import 'heat_fx.dart';
 import 'painters.dart';
 import 'palette.dart';
+import 'screen_events.dart';
 import 'skins.dart';
 
 class GameScreen extends StatefulWidget {
@@ -37,6 +38,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   final List<Bloom> _blooms = [];
   final BoardFx _fx = BoardFx();
   DateTime _now = DateTime.now();
+  final List<ScreenEvent> _screenEvents = [];
 
   int? _dragIndex;
   Offset _dragPos = Offset.zero; // in stack coordinates
@@ -74,6 +76,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       _now = DateTime.now();
       _blooms.removeWhere((b) => _now.difference(b.start) > Bloom.duration);
       _fx.prune(_now);
+      _screenEvents.removeWhere((e) => e.progress(_now) > 1);
       _heat += (game.heat - _heat) * min(1.0, dt * 2.5);
       setState(() {});
     })..start();
@@ -201,6 +204,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       _fx.bursts.add(Burst(mid, BurstKind.ice, 4, now.add(const Duration(milliseconds: 220)), rnd.nextInt(1 << 30)));
       _fx.shake(now, 0.3);
       _blazeStart = now;
+      _screenEvent(game.heat >= 0.34 ? BurstKind.fire : BurstKind.ice, now, 1);
       if (Storage.haptics) {
         HapticFeedback.heavyImpact();
         Future.delayed(const Duration(milliseconds: 150), HapticFeedback.heavyImpact);
@@ -246,6 +250,14 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     }
   }
 
+  /// The screen erupts like a volcano (hot streak) or freezes over and melts
+  /// like a glacier (cold streak). Only one runs at a time.
+  void _screenEvent(BurstKind kind, DateTime now, double power) {
+    if (_screenEvents.any((e) => e.progress(now) < 0.6)) return;
+    final type = kind == BurstKind.fire ? ScreenEventKind.volcano : ScreenEventKind.glacier;
+    _screenEvents.add(ScreenEvent(type, now, power, Random().nextInt(1 << 30)));
+  }
+
   /// Ice explosions while the streak is cold, fire once it heats up.
   /// A full board clear sets off both at once.
   void _explode(MoveResult r, DateTime now) {
@@ -288,7 +300,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       _fx.bursts.add(Burst(mid, BurstKind.ice, 5, now, rnd.nextInt(1 << 30)));
       _fx.bursts.add(Burst(mid, BurstKind.fire, 6, now.add(const Duration(milliseconds: 180)), rnd.nextInt(1 << 30)));
       _fx.shake(now, 0.45);
+      _screenEvent(kind, now, 1);
     } else if (r.linesCleared >= 3) {
+      _screenEvent(kind, now, 0.6 + 0.1 * min(r.linesCleared - 3, 4));
       _fx.bursts.add(Burst(mid, kind, 3.5, now.add(const Duration(milliseconds: 90)), rnd.nextInt(1 << 30)));
       _fx.shake(now, 0.3);
     } else if (big) {
@@ -538,6 +552,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 },
               ),
             ),
+            if (_screenEvents.isNotEmpty)
+              Positioned.fill(
+                child: IgnorePointer(child: CustomPaint(painter: ScreenEventPainter(_screenEvents, _now))),
+              ),
           ],
         ),
       ),
