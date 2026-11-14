@@ -117,7 +117,7 @@ const _en = <String, String>{
   'Kızgın': 'Blazing',
   'Alev!': 'On fire!',
   // Praise.
-  'Tahta tertemiz!': 'Board clear!',
+  'Erime Noktası!': 'Melting Point!',
   'İnanılmaz!': 'Incredible!',
   'Efsane!': 'Legendary!',
   'Muhteşem!': 'Amazing!',

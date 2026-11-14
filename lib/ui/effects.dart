@@ -113,7 +113,7 @@ class HeatEffectsPainter extends CustomPainter {
 
 /// A short cheer for a good move, or null for an ordinary one.
 String? praiseFor(MoveResult r) {
-  if (r.boardCleared) return tx('Tahta tertemiz!');
+  if (r.boardCleared) return tx('Erime Noktası!');
   if (r.linesCleared >= 5) return tx('İnanılmaz!');
   if (r.linesCleared == 4) return tx('Efsane!');
   if (r.linesCleared == 3) return tx('Muhteşem!');
