@@ -26,8 +26,14 @@ class Sound {
 
   static Future<void> init() async {
     try {
+      // iOS "ambient": follows the silent switch and mixes with other audio.
+      // (AudioContextConfig can't combine respectSilence with mixWithOthers
+      // on iOS; it fails an assert, which left debug builds silent.)
       await AudioPlayer.global.setAudioContext(
-        AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers, respectSilence: true).build(),
+        AudioContext(
+          iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient, options: const {}),
+          android: const AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
+        ),
       );
       await _loadPack(pack);
       await _music.setReleaseMode(ReleaseMode.loop);
