@@ -36,6 +36,7 @@ void paintBursts(Canvas canvas, double cell, List<Burst> bursts, DateTime now) {
   for (final b in bursts) {
     final t = now.difference(b.start).inMicroseconds / b.duration.inMicroseconds;
     if (t < 0 || t > 1) continue;
+    if (b.power >= 1) _paintGlow(canvas, cell, b, t);
     if (b.power < 1) {
       _paintPop(canvas, cell, b, t);
     }
@@ -46,6 +47,103 @@ void paintBursts(Canvas canvas, double cell, List<Burst> bursts, DateTime now) {
     }
     if (b.power >= 1.5) {
       _paintChain(canvas, cell, b, t);
+    }
+  }
+}
+
+/// Bright, light-adding glow under every big burst: a white-hot core with a
+/// coloured halo, a light beam along a cleared line, and a whole-board flash
+/// for the biggest blasts. Drawn with an additive blend so it brightens the
+/// blocks and background instead of covering them.
+void _paintGlow(Canvas canvas, double cell, Burst b, double t) {
+  final ice = b.kind == BurstKind.ice;
+  final halo = ice ? const Color(0xFF6FE3FF) : const Color(0xFFFFA020);
+  final core = ice ? const Color(0xFFF2FCFF) : const Color(0xFFFFF6C8);
+  final c = b.center * cell;
+  final add = BlendMode.plus;
+
+  // Whole-board flash for board clears and 3+ line blasts.
+  if (b.power >= 3 && t < 0.3) {
+    final k = 1 - t / 0.3;
+    final board = Rect.fromLTWH(0, 0, b.center.dx * 2 * cell, b.center.dy * 2 * cell);
+    final r = board.longestSide * 0.75;
+    canvas.drawRect(
+      board.inflate(cell),
+      Paint()
+        ..blendMode = add
+        ..shader = RadialGradient(
+          colors: [halo.withValues(alpha: 0.45 * k * k), halo.withValues(alpha: 0.12 * k * k), halo.withValues(alpha: 0)],
+          stops: const [0, 0.6, 1],
+        ).createShader(Rect.fromCircle(center: board.center, radius: r)),
+    );
+  }
+
+  // Light beam running along the cleared line.
+  if (b.spread != Offset.zero && t < 0.4) {
+    final lt = t / 0.4;
+    final grow = Curves.easeOutExpo.transform(min(1.0, lt * 2.5));
+    final fade = 1 - Curves.easeInQuad.transform(lt);
+    final a = c - b.spread * cell * grow;
+    final z = c + b.spread * cell * grow;
+    canvas.drawLine(
+      a,
+      z,
+      Paint()
+        ..blendMode = add
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = cell * (1.1 + 0.25 * min(b.streak, 4)) * (0.6 + 0.4 * fade)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, cell * 0.45)
+        ..color = halo.withValues(alpha: 0.75 * fade),
+    );
+    canvas.drawLine(
+      a,
+      z,
+      Paint()
+        ..blendMode = add
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = cell * 0.28 * fade + 1
+        ..color = core.withValues(alpha: 0.95 * fade),
+    );
+  }
+
+  // White-hot core and coloured halo at the centre.
+  if (t < 0.5) {
+    final lt = t / 0.5;
+    final k = (1 - lt) * (1 - lt);
+    final r = cell * (0.9 + 0.55 * min(b.power, 6)) * (0.55 + 0.6 * Curves.easeOutCubic.transform(lt));
+    canvas.drawCircle(
+      c,
+      r,
+      Paint()
+        ..blendMode = add
+        ..shader = RadialGradient(
+          colors: [core.withValues(alpha: 0.95 * k), halo.withValues(alpha: 0.55 * k), halo.withValues(alpha: 0)],
+          stops: const [0, 0.35, 1],
+        ).createShader(Rect.fromCircle(center: c, radius: r)),
+    );
+  }
+
+  // Sparkle glints scattered round big blasts.
+  if (b.power >= 2.5 && t < 0.7) {
+    final rnd = Random(b.seed + 23);
+    final n = (6 + 2 * min(b.power, 6)).round();
+    for (var i = 0; i < n; i++) {
+      final delay = rnd.nextDouble() * 0.35;
+      final lt = (t - delay) / 0.3;
+      if (lt < 0 || lt > 1) continue;
+      final ang = rnd.nextDouble() * 2 * pi;
+      final dist = cell * (0.8 + rnd.nextDouble() * 1.2 * b.power);
+      final p = c + Offset(cos(ang), sin(ang)) * dist;
+      final k = _popScale(lt, grow: 0.3);
+      canvas.drawCircle(
+        p,
+        cell * 0.5 * k,
+        Paint()
+          ..blendMode = add
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, cell * 0.25)
+          ..color = halo.withValues(alpha: 0.7 * (1 - lt)),
+      );
+      _twinkle(canvas, p, cell * 0.55 * k, Colors.white.withValues(alpha: 1 - lt), lt + i);
     }
   }
 }

@@ -287,15 +287,15 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     if (r.boardCleared) {
       _fx.bursts.add(Burst(mid, BurstKind.ice, 5, now, rnd.nextInt(1 << 30)));
       _fx.bursts.add(Burst(mid, BurstKind.fire, 6, now.add(const Duration(milliseconds: 180)), rnd.nextInt(1 << 30)));
-      _fx.shake(now, 0.35);
+      _fx.shake(now, 0.45);
     } else if (r.linesCleared >= 3) {
       _fx.bursts.add(Burst(mid, kind, 3.5, now.add(const Duration(milliseconds: 90)), rnd.nextInt(1 << 30)));
-      _fx.shake(now, 0.22);
+      _fx.shake(now, 0.3);
     } else if (big) {
-      _fx.shake(now, 0.14);
+      _fx.shake(now, 0.18);
     } else {
       // A small punch even for a single line, so every clear feels like a hit.
-      _fx.shake(now, 0.06);
+      _fx.shake(now, 0.08);
     }
   }
 
