@@ -19,9 +19,9 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Blazegrid</string>
+	<string>Thawline</string>
 	<key>CFBundleDisplayName</key>
-	<string>Blazegrid</string>
+	<string>Thawline</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>UIRequiresFullScreen</key>

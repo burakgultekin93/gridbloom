@@ -32,7 +32,7 @@ class BlazegridApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Blazegrid',
+      title: 'Thawline',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Palette.leaf, brightness: Brightness.dark, surface: Palette.panel),
