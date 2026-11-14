@@ -19,7 +19,14 @@ class DefaultFirebaseOptions {
     };
   }
 
-  static const FirebaseOptions? ios = null;
+  static const FirebaseOptions? ios = FirebaseOptions(
+    apiKey: 'AIzaSyBQ8z6ULJMNoU_T8CPZC8edLc6twSBHSks',
+    appId: '1:276833642735:ios:35e7b66167f5df4c25931a',
+    messagingSenderId: '276833642735',
+    projectId: 'blazegrid-7a274',
+    storageBucket: 'blazegrid-7a274.firebasestorage.app',
+    iosBundleId: 'com.burakgultekin.blazegrid',
+  );
 
   static const FirebaseOptions? android = null;
 }
