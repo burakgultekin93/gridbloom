@@ -1,56 +1,69 @@
-# Blazegrid store listing
+# Thawline store listing
 
 App Store Connect: primary language English (U.S.), plus a Turkish localization.
 Name and subtitle are searched by Apple, so keywords do not repeat their words.
 
 ## English (U.S.), primary
 
-**Name (30):** Blazegrid: Block Puzzle
+**Name (30):** Thawline: Ice & Fire Puzzle
 
-**Subtitle (30):** Ice & fire block blast
+**Subtitle (30):** Melt the ice, stop the fire
 
-**Promotional text (170):** Clear lines, heat your streak from ice to fire and set off chain explosions. New: 3 sound packs and bigger, wilder blasts!
+**Promotional text (170):** New Heat mode: frozen cells block your board and fire spreads every few moves. Clear lines to melt the ice and put out the flames before they take over.
 
 **Description:**
 
-Blazegrid is a block puzzle that runs from ice to fire. Place pieces on an 8x8 board and blast full rows and columns away.
+Thawline is a strategy puzzle about heat. Frozen cells lock parts of the board and fires spread across it, and the only tools you have are the pieces you place and the lines you complete.
 
-- While your streak is cold, cleared lines shatter into ice crystals. As it heats up, they explode in fireballs and chain blasts.
-- Keep clearing and the whole screen warms from ice to fire. Keep the streak alive and watch the flames grow.
-- Clear the whole board for an ice-and-fire blast, and your blocks switch to a new style: Neon, Ice, Magma or Crystal.
-- Mini goals in every game give bonus points, and a record bar shows how close you are to your best.
-- Put your own photo or one of 12 ready-made pictures on the board and reveal it as you place blocks.
-- 6 block patterns and 3 sound packs: Classic, Arcade and Pop.
-- No timer. Stop any time and pick up where you left off.
-- Works offline. No account, no data collected.
+HEAT MODE
+- Frozen cells block your moves. Complete a line through or next to them to crack the ice, or build a hot streak to melt it in one go.
+- Burning blocks have a fuse. If you don't clear their line in time, the fire jumps to the next cell.
+- Fire meeting ice turns to steam, so you can use one hazard against the other.
+- Every few moves a new wave arrives, alternating ice and fire.
 
-**Keywords (100):** blast,combo,streak,8x8,grid,brain,logic,fire,ice,offline,classic,cube,tile,match,relax,free
+A BOARD THAT HEATS UP
+- Every clearing move in a row raises the heat. The screen warms from snow to flames, and your score multiplier grows with it.
+- Cold clears shatter like ice; hot clears burst into fire.
 
-**Support URL:** https://claude.ai/artifact/REQ8Ur6DvCugxEW99C4Wg2
-**Privacy URL:** https://claude.ai/artifact/DofMy5FACEN8mQrRugvB8t
+AND MORE
+- Classic mode for calm play without hazards.
+- Three mini goals in every game and a record bar that shows how close you are to your best.
+- Put your own photo or one of 12 pictures on the board.
+- Four block materials (Neon, Ice, Magma, Crystal), 6 patterns and 3 sound packs.
+- No timer, no ads, no account. Works offline.
+
+**Keywords (100):** strategy,logic,brain,heat,freeze,melt,flame,streak,combo,tactics,mind,offline,relax,board,grid
 
 ## Türkçe
 
-**Ad (30):** Blazegrid: Blok Bulmaca
+**Ad (30):** Thawline: Buz ve Ateş
 
-**Alt başlık (30):** Buz ve ateşle blok patlat
+**Alt başlık (30):** Buzu erit, yangını söndür
 
-**Tanıtım metni (170):** Çizgileri patlat, seriyi buzdan alevlere kadar kızıştır, zincirleme patlamaları başlat. Yeni: 3 ses paketi ve daha büyük patlamalar!
+**Tanıtım metni (170):** Yeni Isı modu: donmuş hücreler tahtayı kilitliyor, ateş birkaç hamlede bir yayılıyor. Çizgileri tamamlayarak buzu erit, alevleri yayılmadan söndür.
 
 **Açıklama:**
 
-Blazegrid, buzdan başlayıp alevlere uzanan bir blok bulmaca oyunu. 8x8 tahtaya parçaları yerleştir, dolan satır ve sütunları patlat.
+Thawline, ısı üzerine kurulu bir strateji bulmacası. Donmuş hücreler tahtanın bazı yerlerini kilitliyor, ateş tahtada yayılıyor. Elindeki tek araç yerleştirdiğin parçalar ve tamamladığın çizgiler.
 
-- Soğukken temizlenen çizgiler buz kristalleri gibi paramparça olur. Seri ısındıkça ateş topları ve zincirleme patlamalar başlar.
-- Art arda temizledikçe ekran buzdan aleve ısınır. Seriyi sürdür, alevleri büyüt.
-- Tahtayı tamamen temizle, buz ve ateş aynı anda patlasın, bloklar yeni bir görünüme geçsin: Neon, Buz, Magma ya da Kristal.
-- Her oyunda bonus puan veren mini görevler ve rekoruna ne kadar kaldığını gösteren çubuk.
-- Tahtaya kendi fotoğrafını ya da 12 hazır resimden birini koy, bloklar yerleştikçe resim ortaya çıksın.
-- 6 blok deseni ve 3 ses paketi: Klasik, Arcade ve Pop.
-- Zaman sınırı yok. İstediğin an bırak, kaldığın yerden devam et.
-- İnternet gerekmez. Hesap yok, veri toplanmaz.
+ISI MODU
+- Donmuş hücreler hamleni engeller. İçinden ya da yanından geçen bir çizgiyi tamamla, buz çatlasın. Ya da seriyi kızıştır, buzu tek seferde erit.
+- Yanan blokların fitili var. Zamanında çizgisini temizlemezsen ateş yandaki hücreye sıçrar.
+- Ateş buza değerse buhar olur, bir tehlikeyi ötekine karşı kullanabilirsin.
+- Birkaç hamlede bir buz ya da ateş dalgası gelir.
 
-**Anahtar kelimeler (100):** puzzle,patlat,kombo,seri,8x8,zeka,beyin,ateş,buz,internetsiz,klasik,küp,oyun
+ISINAN TAHTA
+- Art arda her temizleme ısıyı yükseltir. Ekran kardan aleve döner, puan çarpanın da büyür.
+- Soğukken temizlenen çizgiler buz gibi kırılır, sıcakken alev alır.
+
+VE DAHASI
+- Tehlikesiz, sakin oyun için Klasik mod.
+- Her oyunda üç mini görev ve rekoruna ne kadar kaldığını gösteren çubuk.
+- Tahtaya kendi fotoğrafını ya da 12 resimden birini koy.
+- Dört blok malzemesi (Neon, Buz, Magma, Kristal), 6 desen ve 3 ses paketi.
+- Zaman sınırı yok, reklam yok, hesap yok. İnternetsiz oynanır.
+
+**Anahtar kelimeler (100):** strateji,mantık,zeka,beyin,bulmaca,ısı,donma,erit,alev,seri,kombo,taktik,internetsiz,tahta
 
 ## Store answers
 
@@ -58,4 +71,4 @@ Blazegrid, buzdan başlayıp alevlere uzanan bir blok bulmaca oyunu. 8x8 tahtaya
 - Category: Games › Puzzle
 - Contains ads: No (update when ads are turned on)
 - Age rating: 4+ (no violence, no user content, no purchases yet)
-- App Privacy (Apple) / Data safety (Google): Data Not Collected. Photo stays on device.
+- App Privacy (Apple) / Data safety (Google): to be re-checked for Firebase Remote Config before the next submission. Photo stays on device.

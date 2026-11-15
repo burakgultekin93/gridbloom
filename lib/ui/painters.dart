@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../game/game_state.dart';
 import '../game/pieces.dart';
 import 'bursts.dart';
+import 'heat_fx.dart';
 import 'skins.dart';
 
 /// A cleared block that freezes and shatters (cold streak) or burns and
@@ -42,6 +43,13 @@ class BoardFx {
   final List<PlaceFlash> flashes = [];
   final List<LineBeam> beams = [];
   final List<Burst> bursts = [];
+
+  // Heat mode.
+  final List<IceShatter> shards = [];
+  final List<IceCrack> cracks = [];
+  final List<FireJump> jumps = [];
+  final List<SteamPuff> steam = [];
+  final List<HazardArrival> arrivals = [];
   DateTime? glint; // a diagonal shine across all blocks
   static const glintDuration = Duration(milliseconds: 750);
 
@@ -71,6 +79,11 @@ class BoardFx {
     flashes.removeWhere((f) => now.difference(f.start) > PlaceFlash.duration);
     beams.removeWhere((b) => now.difference(b.start) > LineBeam.duration);
     bursts.removeWhere((b) => now.difference(b.start) > b.duration);
+    shards.removeWhere((e) => now.difference(e.start) > IceShatter.duration);
+    cracks.removeWhere((e) => now.difference(e.start) > IceCrack.duration);
+    jumps.removeWhere((e) => now.difference(e.start) > FireJump.duration);
+    steam.removeWhere((e) => now.difference(e.start) > SteamPuff.duration);
+    arrivals.removeWhere((e) => now.difference(e.start) > HazardArrival.duration);
     if (glint != null && now.difference(glint!) > glintDuration) glint = null;
   }
 
@@ -78,6 +91,11 @@ class BoardFx {
     flashes.clear();
     beams.clear();
     bursts.clear();
+    shards.clear();
+    cracks.clear();
+    jumps.clear();
+    steam.clear();
+    arrivals.clear();
     glint = null;
     shakeStart = null;
   }
@@ -130,11 +148,26 @@ class BoardPainter extends CustomPainter {
     }
 
     final blockArea = Path();
+    final seconds = (now.millisecondsSinceEpoch % 1000000) / 1000;
+    final burning = <(int, int)>[];
     for (var r = 0; r < boardSize; r++) {
       for (var c = 0; c < boardSize; c++) {
         final rect = rectAt(r, c);
         final v = game.board[r][c];
         final inClearLine = clearRows.contains(r) || clearCols.contains(c);
+        if (v == frozenCell) {
+          paintSkinEmpty(canvas, rect, skin);
+          paintFrozenCell(canvas, rect, game.ice[r][c], seconds);
+          if (inClearLine) {
+            // The coming clear will crack this ice.
+            canvas.drawRRect(
+              RRect.fromRectAndRadius(rect.deflate(cell * 0.05), Radius.circular(cell * 0.12)),
+              Paint()..color = Colors.white.withValues(alpha: 0.3),
+            );
+          }
+          continue;
+        }
+        if (v >= 0 && game.fuse[r][c] > 0) burning.add((r, c));
         if (v >= 0) {
           // Blocks in a line about to clear take the dragged piece's colour.
           paintSkinBlock(
@@ -183,6 +216,11 @@ class BoardPainter extends CustomPainter {
           );
         }
       }
+    }
+
+    // Flames go on top of all blocks so they can lick into neighbours.
+    for (final (r, c) in burning) {
+      paintBurning(canvas, rectAt(r, c), game.fuse[r][c], seconds, r * boardSize + c);
     }
 
     // Diagonal shine sweeping across every block after a placement.
@@ -277,6 +315,16 @@ class BoardPainter extends CustomPainter {
       _paintShatter(canvas, rectAt(b.r, b.c), b.color, t, b.heat);
     }
 
+    paintHeatFx(
+      canvas,
+      cell,
+      now,
+      shards: fx.shards,
+      cracks: fx.cracks,
+      jumps: fx.jumps,
+      steam: fx.steam,
+      arrivals: fx.arrivals,
+    );
     paintBursts(canvas, cell, fx.bursts, now);
   }
 

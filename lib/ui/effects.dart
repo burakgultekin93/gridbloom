@@ -113,7 +113,7 @@ class HeatEffectsPainter extends CustomPainter {
 
 /// A short cheer for a good move, or null for an ordinary one.
 String? praiseFor(MoveResult r) {
-  if (r.boardCleared) return tx('Tahta tertemiz!');
+  if (r.boardCleared) return tx('Erime Noktası!');
   if (r.linesCleared >= 5) return tx('İnanılmaz!');
   if (r.linesCleared == 4) return tx('Efsane!');
   if (r.linesCleared == 3) return tx('Muhteşem!');
@@ -122,5 +122,14 @@ String? praiseFor(MoveResult r) {
   if (r.linesCleared == 2) return tx('Harika!');
   if (r.multiplier >= 2) return tx('Süper!');
   if (r.linesCleared == 1) return tx('Güzel!');
+  return null;
+}
+
+/// Heat mode cheers, used when no line cheer fits.
+String? heatPraiseFor(MoveResult r) {
+  if (r.hotMelt) return tx('Buz eridi!');
+  if (r.doused.length >= 2) return tx('Yangın söndü!');
+  if (r.doused.isNotEmpty) return tx('Söndürüldü!');
+  if (r.melted > 0) return tx('Buz çözüldü!');
   return null;
 }

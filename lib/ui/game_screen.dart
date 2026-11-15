@@ -15,13 +15,16 @@ import '../services/sound.dart';
 import '../services/storage.dart';
 import 'bursts.dart';
 import 'effects.dart';
+import 'heat_fx.dart';
 import 'painters.dart';
 import 'palette.dart';
+import 'screen_events.dart';
 import 'skins.dart';
 
 class GameScreen extends StatefulWidget {
   final GameState? resume;
-  const GameScreen({super.key, this.resume});
+  final GameMode mode;
+  const GameScreen({super.key, this.resume, this.mode = GameMode.classic});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -35,6 +38,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   final List<Bloom> _blooms = [];
   final BoardFx _fx = BoardFx();
   DateTime _now = DateTime.now();
+  final List<ScreenEvent> _screenEvents = [];
 
   int? _dragIndex;
   Offset _dragPos = Offset.zero; // in stack coordinates
@@ -60,9 +64,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    game = widget.resume ?? GameState(best: Storage.best);
-    game.best = max(game.best, Storage.best);
-    _best = Storage.best;
+    final mode = widget.resume?.mode ?? widget.mode;
+    game = widget.resume ?? GameState(best: Storage.bestFor(mode), mode: mode);
+    game.best = max(game.best, Storage.bestFor(mode));
+    _best = Storage.bestFor(mode);
     _heat = game.heat;
     _ticker = createTicker((elapsed) {
       final dt = (elapsed - _lastTick).inMicroseconds / 1e6;
@@ -71,10 +76,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       _now = DateTime.now();
       _blooms.removeWhere((b) => _now.difference(b.start) > Bloom.duration);
       _fx.prune(_now);
+      _screenEvents.removeWhere((e) => e.progress(_now) > 1);
       _heat += (game.heat - _heat) * min(1.0, dt * 2.5);
       setState(() {});
     })..start();
-    if (!Storage.tutorialSeen) {
+    if (game.isHeat ? !Storage.heatTutorialSeen : !Storage.tutorialSeen) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showTutorial());
     }
   }
@@ -177,6 +183,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       _fx.beams.add(LineBeam(false, col, now));
     }
     _explode(r, now);
+    _heatFx(r, now);
     if (r.clearedCells.isNotEmpty) {
       final start = DateTime.now();
       for (final (row, col, color) in r.clearedCells) {
@@ -197,6 +204,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       _fx.bursts.add(Burst(mid, BurstKind.ice, 4, now.add(const Duration(milliseconds: 220)), rnd.nextInt(1 << 30)));
       _fx.shake(now, 0.3);
       _blazeStart = now;
+      _screenEvent(game.heat >= 0.34 ? BurstKind.fire : BurstKind.ice, now, 1);
       if (Storage.haptics) {
         HapticFeedback.heavyImpact();
         Future.delayed(const Duration(milliseconds: 150), HapticFeedback.heavyImpact);
@@ -205,9 +213,14 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     if (brokeRecord && !r.boardCleared) Sound.play('big');
     final praise = brokeRecord
         ? tx('YENİ REKOR!')
-        : (praiseFor(r) ?? (r.goalsDone.isNotEmpty ? tx('Görev tamam!') : null));
+        : ((game.isHeat && r.linesCleared <= 1 ? heatPraiseFor(r) : null) ??
+              praiseFor(r) ??
+              heatPraiseFor(r) ??
+              (r.goalsDone.isNotEmpty ? tx('Görev tamam!') : null));
     if (praise != null) {
       final parts = <String>['+${r.points}'];
+      if (r.melted > 0) parts.add('❄ ${r.melted}');
+      if (r.doused.isNotEmpty) parts.add('${tx('söndü')} ${r.doused.length}');
       if (r.linesCleared >= 2) parts.add(pick('${r.linesCleared} çizgi', '${r.linesCleared} lines'));
       if (r.multiplier >= 2) parts.add('${tx('seri')} x${r.multiplier}');
       if (r.skinChanged) parts.add('${tx('yeni görünüm')}: ${tx(skins[game.skin].name)}');
@@ -223,10 +236,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     if (game.score > _best) {
       _best = game.score;
       _newBest = true;
-      Storage.best = _best;
+      Storage.setBestFor(game.mode, _best);
     }
     if (game.gameOver) {
-      Storage.clearSavedGame();
+      Storage.clearSavedGame(game.mode);
       Storage.gamesPlayed = Storage.gamesPlayed + 1;
       Future.delayed(const Duration(milliseconds: 400), () => Sound.play('gameover'));
       Future.delayed(const Duration(milliseconds: 700), () {
@@ -235,6 +248,14 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     } else {
       Storage.saveGame(game);
     }
+  }
+
+  /// The screen erupts like a volcano (hot streak) or freezes over and melts
+  /// like a glacier (cold streak). Only one runs at a time.
+  void _screenEvent(BurstKind kind, DateTime now, double power) {
+    if (_screenEvents.any((e) => e.progress(now) < 0.6)) return;
+    final type = kind == BurstKind.fire ? ScreenEventKind.volcano : ScreenEventKind.glacier;
+    _screenEvents.add(ScreenEvent(type, now, power, Random().nextInt(1 << 30)));
   }
 
   /// Ice explosions while the streak is cold, fire once it heats up.
@@ -278,15 +299,17 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     if (r.boardCleared) {
       _fx.bursts.add(Burst(mid, BurstKind.ice, 5, now, rnd.nextInt(1 << 30)));
       _fx.bursts.add(Burst(mid, BurstKind.fire, 6, now.add(const Duration(milliseconds: 180)), rnd.nextInt(1 << 30)));
-      _fx.shake(now, 0.35);
+      _fx.shake(now, 0.45);
+      _screenEvent(kind, now, 1);
     } else if (r.linesCleared >= 3) {
+      _screenEvent(kind, now, 0.6 + 0.1 * min(r.linesCleared - 3, 4));
       _fx.bursts.add(Burst(mid, kind, 3.5, now.add(const Duration(milliseconds: 90)), rnd.nextInt(1 << 30)));
-      _fx.shake(now, 0.22);
+      _fx.shake(now, 0.3);
     } else if (big) {
-      _fx.shake(now, 0.14);
+      _fx.shake(now, 0.18);
     } else {
       // A small punch even for a single line, so every clear feels like a hit.
-      _fx.shake(now, 0.06);
+      _fx.shake(now, 0.08);
     }
   }
 
@@ -331,9 +354,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   }
 
   void _restart() {
-    Storage.clearSavedGame();
+    Storage.clearSavedGame(game.mode);
     setState(() {
-      game = GameState(best: Storage.best);
+      game = GameState(best: Storage.bestFor(game.mode), mode: game.mode);
       _newBest = false;
       _blooms.clear();
       _fx.clear();
@@ -343,11 +366,30 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _showTutorial() async {
-    final steps = [
-      (tx('Parçayı sürükle'), tx('Alttaki 3 parçadan birini tut ve tahtaya sürükle. Parçalar döndürülemez.')),
-      (tx('Çizgiyi doldur'), tx('Bir satır ya da sütun tamamen dolunca patlayarak temizlenir.')),
-      (tx('Seriyi sürdür'), tx('Aynı anda birden fazla çizgi temizle ve art arda temizleyerek puanını katla.')),
-    ];
+    final heat = game.isHeat;
+    final steps = heat
+        ? [
+            (tx('Isı modu'), tx('Çizgileri doldurup patlat. Ama bu tahtada buz ve ateş de var.')),
+            (
+              tx('Donmuş hücre'),
+              tx('Buzun üstüne parça konmaz. Yanındaki ya da içindeki çizgi patlayınca çatlar ve erir.'),
+            ),
+            (
+              tx('Yanan blok'),
+              tx('Sayaç bitince ateş yan hücreye sıçrar ve tahtayı doldurur. Bloğun çizgisini patlatıp söndür.'),
+            ),
+            (
+              tx('Isıyı kullan'),
+              tx(
+                '4 hamle üst üste çizgi patlatırsan seri kızışır ve dokunduğun buzlar tek seferde erir. Ateş buza sıçrarsa ikisi de söner.',
+              ),
+            ),
+          ]
+        : [
+            (tx('Parçayı sürükle'), tx('Alttaki 3 parçadan birini tut ve tahtaya sürükle. Parçalar döndürülemez.')),
+            (tx('Çizgiyi doldur'), tx('Bir satır ya da sütun tamamen dolunca patlayarak temizlenir.')),
+            (tx('Seriyi sürdür'), tx('Aynı anda birden fazla çizgi temizle ve art arda temizleyerek puanını katla.')),
+          ];
     var i = 0;
     await showDialog<void>(
       context: context,
@@ -361,7 +403,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
           ),
           content: Text(steps[i].$2, style: const TextStyle(color: Palette.soil, fontSize: 16)),
           actions: [
-            Text('${i + 1}/3  ', style: const TextStyle(color: Palette.soilLight)),
+            Text('${i + 1}/${steps.length}  ', style: const TextStyle(color: Palette.soilLight)),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Palette.leaf, foregroundColor: Colors.white),
               onPressed: () {
@@ -377,7 +419,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         ),
       ),
     );
-    Storage.tutorialSeen = true;
+    if (heat) {
+      Storage.heatTutorialSeen = true;
+    } else {
+      Storage.tutorialSeen = true;
+    }
   }
 
   void _pause() {
@@ -447,6 +493,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                           _topBar(shownHeat),
                           _heatMeter(shownHeat),
                           _goalsRow(heatInk(shownHeat)),
+                          if (game.isHeat) _hazardRow(heatInk(shownHeat)),
                           const Spacer(),
                           Center(
                             child: Transform.translate(
@@ -505,6 +552,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 },
               ),
             ),
+            if (_screenEvents.isNotEmpty)
+              Positioned.fill(
+                child: IgnorePointer(child: CustomPaint(painter: ScreenEventPainter(_screenEvents, _now))),
+              ),
           ],
         ),
       ),
@@ -534,7 +585,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
           const Spacer(),
           Column(
             children: [
-              Text(tx('KLASİK'), style: TextStyle(color: soft, fontSize: 12, letterSpacing: 2)),
+              Text(
+                game.isHeat ? tx('ISI') : tx('KLASİK'),
+                style: TextStyle(color: soft, fontSize: 12, letterSpacing: 2),
+              ),
               Text(
                 '${game.score}',
                 style: TextStyle(color: ink, fontSize: 40, fontWeight: FontWeight.w800, height: 1.1),
@@ -574,7 +628,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     }
     final left = target - game.score;
     return SizedBox(
-      height: 18,
+      height: 22,
       width: 150,
       child: Column(
         children: [
@@ -635,6 +689,128 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         ],
       ),
     );
+  }
+
+  /// Heat mode: what the next wave brings and how much ice and fire is out.
+  Widget _hazardRow(Color ink) {
+    final fire = game.nextWaveIsFire;
+    final n = game.movesToWave;
+    final next = fire
+        ? pick('$n hamle sonra kıvılcım', 'Spark in $n ${n == 1 ? 'move' : 'moves'}')
+        : pick('$n hamle sonra buz', 'Ice in $n ${n == 1 ? 'move' : 'moves'}');
+    final soon = n <= 1;
+    Widget chip(IconData icon, Color color, String text, {bool glow = false}) => Container(
+      margin: const EdgeInsets.symmetric(horizontal: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: color.withValues(alpha: glow ? 0.28 : 0.12),
+        border: Border.all(color: color.withValues(alpha: glow ? 0.9 : 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(color: ink.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          chip(
+            fire ? Icons.local_fire_department_rounded : Icons.ac_unit_rounded,
+            fire ? const Color(0xFFFF7A1A) : const Color(0xFF8FD8FF),
+            next,
+            glow: soon,
+          ),
+          chip(Icons.ac_unit_rounded, const Color(0xFF8FD8FF), '${game.iceCount}'),
+          chip(Icons.local_fire_department_rounded, const Color(0xFFFF7A1A), '${game.burningCount}'),
+        ],
+      ),
+    );
+  }
+
+  /// Heat mode effects: ice cracking and melting, fire put out, fire
+  /// jumping to a new cell, steam where fire meets ice, and the next wave.
+  void _heatFx(MoveResult r, DateTime now) {
+    if (!game.isHeat) return;
+    final rnd = Random();
+    Offset at(int row, int col) => Offset(col + 0.5, row + 0.5);
+    var hard = false;
+    for (final (row, col, hit) in r.iceHits) {
+      final melted = hit == IceHit.melted;
+      _fx.bursts.add(Burst(at(row, col), BurstKind.ice, melted ? 1.3 : 0.7, now, rnd.nextInt(1 << 30)));
+      if (melted) {
+        _fx.shards.add(IceShatter(row, col, now));
+        hard = true;
+      } else {
+        _fx.cracks.add(IceCrack(row, col, now));
+      }
+    }
+    if (r.hotMelt) {
+      // A hot streak melts ice in one go: fire and ice together.
+      for (final (row, col, _) in r.iceHits) {
+        _fx.bursts.add(
+          Burst(at(row, col), BurstKind.fire, 1.1, now.add(const Duration(milliseconds: 120)), rnd.nextInt(1 << 30)),
+        );
+      }
+    }
+    for (final (row, col) in r.doused) {
+      // Fire put out: a frost puff swallows the flame.
+      _fx.bursts.add(Burst(at(row, col), BurstKind.fire, 0.8, now, rnd.nextInt(1 << 30)));
+      _fx.bursts.add(
+        Burst(at(row, col), BurstKind.ice, 1.2, now.add(const Duration(milliseconds: 90)), rnd.nextInt(1 << 30)),
+      );
+      hard = true;
+    }
+    final later = now.add(const Duration(milliseconds: 380));
+    for (final ((fr, fc), (tr, tc)) in r.spread) {
+      _fx.jumps.add(FireJump(fr, fc, tr, tc, later));
+      _fx.bursts.add(
+        Burst(at(tr, tc), BurstKind.fire, 1.3, later.add(const Duration(milliseconds: 220)), rnd.nextInt(1 << 30)),
+      );
+    }
+    for (final (row, col) in r.steam) {
+      _fx.bursts.add(Burst(at(row, col), BurstKind.fire, 0.9, later, rnd.nextInt(1 << 30)));
+      _fx.bursts.add(Burst(at(row, col), BurstKind.ice, 1.1, later, rnd.nextInt(1 << 30)));
+      _fx.steam.add(SteamPuff(row, col, later));
+    }
+    final wave = now.add(const Duration(milliseconds: 650));
+    for (final (row, col) in r.newIce) {
+      _fx.bursts.add(Burst(at(row, col), BurstKind.ice, 1.0, wave, rnd.nextInt(1 << 30)));
+      _fx.arrivals.add(HazardArrival(row, col, false, wave));
+    }
+    for (final (row, col) in r.ignited) {
+      _fx.bursts.add(Burst(at(row, col), BurstKind.fire, 1.0, wave, rnd.nextInt(1 << 30)));
+      _fx.arrivals.add(HazardArrival(row, col, true, wave));
+    }
+    if (r.spread.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (!mounted) return;
+        _fx.shake(DateTime.now(), 0.12);
+        Sound.play('fire1', volume: 0.8);
+        if (Storage.haptics) HapticFeedback.mediumImpact();
+      });
+    }
+    if (hard && r.linesCleared > 0) {
+      Future.delayed(const Duration(milliseconds: 140), () => Sound.play(r.hotMelt ? 'ice3' : 'ice2', volume: 0.8));
+    }
+    if (r.steam.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 420), () => Sound.play('ice1', volume: 0.7));
+    }
+    if (r.newIce.isNotEmpty || r.ignited.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 650), () {
+        Sound.play(r.ignited.isNotEmpty ? 'fire0' : 'ice0', volume: 0.6);
+        if (Storage.haptics) HapticFeedback.lightImpact();
+      });
+    }
   }
 
   /// Streak thermometer: snowflake when cold, flame when hot.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'services/photo_store.dart';
+import 'services/remote_config.dart';
 import 'services/sound.dart';
 import 'services/storage.dart';
 import 'ui/home_screen.dart';
@@ -12,6 +13,8 @@ Future<void> main() async {
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await Storage.init();
+  // Quick: uses saved or built-in values, fetches new ones in the background.
+  await RemoteConfigService.init();
   await PhotoStore.load();
   await Sound.init();
   Sound.startMusic();
@@ -29,7 +32,7 @@ class BlazegridApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Blazegrid',
+      title: 'Thawline',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Palette.leaf, brightness: Brightness.dark, surface: Palette.panel),

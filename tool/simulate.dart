@@ -1,6 +1,6 @@
 // ignore_for_file: avoid_print
 // Plays many games with a simple bot to check the difficulty curve.
-// Run: dart run tool/simulate.dart [games]
+// Run: dart run tool/simulate.dart [games] [classic|heat]
 import 'dart:math';
 
 import 'package:blazegrid/game/game_state.dart';
@@ -33,6 +33,8 @@ bool _move(GameState g) {
 
 void main(List<String> args) {
   final games = args.isNotEmpty ? int.parse(args[0]) : 200;
+  final mode = args.length > 1 ? GameMode.values.byName(args[1]) : GameMode.classic;
+  var melted = 0, doused = 0, spreads = 0;
   final rnd = Random(7);
   var record = 0, records = 0;
   final scores = <int>[];
@@ -40,12 +42,16 @@ void main(List<String> args) {
   final goalHits = <Goal, int>{};
   final goalSeen = <Goal, int>{};
   for (var k = 0; k < games; k++) {
-    final g = GameState(rng: Random(rnd.nextInt(1 << 30)), best: record);
+    final g = GameState(rng: Random(rnd.nextInt(1 << 30)), best: record, mode: mode);
     var m = 0;
     while (!g.gameOver && m < 3000) {
+      final fires = g.burningCount;
       if (!_move(g)) break;
+      if (g.burningCount > fires) spreads++;
       m++;
     }
+    melted += g.thawedTotal;
+    doused += g.dousedTotal;
     for (final goal in g.goals) {
       goalSeen[goal] = (goalSeen[goal] ?? 0) + 1;
       if (g.goalsDone.contains(goal)) goalHits[goal] = (goalHits[goal] ?? 0) + 1;
@@ -59,7 +65,12 @@ void main(List<String> args) {
   }
   scores.sort();
   final avg = scores.reduce((a, b) => a + b) / games;
-  print('games: $games');
+  print('games: $games  mode: ${mode.name}');
+  if (mode == GameMode.heat) {
+    print(
+      'per game: ice melted ${(melted / games).toStringAsFixed(1)}  fires out ${(doused / games).toStringAsFixed(1)}  fire jumps ${(spreads / games).toStringAsFixed(1)}',
+    );
+  }
   print(
     'avg score: ${avg.round()}  median: ${scores[games ~/ 2]}  p10: ${scores[games ~/ 10]}  p90: ${scores[games * 9 ~/ 10]}',
   );
