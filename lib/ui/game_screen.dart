@@ -628,7 +628,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     }
     final left = target - game.score;
     return SizedBox(
-      height: 18,
+      height: 22,
       width: 150,
       child: Column(
         children: [
